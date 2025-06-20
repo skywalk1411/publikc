@@ -6,6 +6,17 @@ A light Electron client for Kirka.io. Join our [discord](https://discord.gg/jPge
 
 
 Windows releases are available.
+
+# Install
+
+- Download all the source
+- open cmd.exe in windows
+- move to the folder
+- install node.js from node.js official website for windows
+- `npm install`
+- `npm i v8-compile-cache --save`
+- to launch type: `npx electron .`
+
 # What features does this have?
 
 - Uncapped FPS
