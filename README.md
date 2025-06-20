@@ -1,11 +1,9 @@
-# Juice Client
+# Publikc Client
 
-A light Electron client for Kirka.io. Join our [discord](https://discord.gg/FjzAAdSjng) for support and update notifications.
+A light Electron client for Kirka.io. Join our [discord](https://discord.gg/jPgezmpNwm) for support and update notifications.
 
 # Download
 
-- [Website](https://juice.irrvlo.xyz)
-- [Releases](https://github.com/irrvlo/juice-client/releases)
 
 Windows, Linux and MacOS releases are available.
 # What features does this have?
@@ -59,7 +57,7 @@ Windows, Linux and MacOS releases are available.
 Juice Client is 100% completely safe to use. Releases are built directly with the source code using Github Workflows (Thanks Error!). If you face any issues, join our [discord](https://discord.gg/FjzAAdSjng) to report bugs.
 
 ## Credits
-
+- skywalk
 - irrvlo
 - CarrySheriff for Chest/Pack opener, Map Images Repo, Market Names, and Custom List Price
 - AwesomeSam for a basic Resource Swapper
