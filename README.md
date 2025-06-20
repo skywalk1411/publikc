@@ -54,7 +54,7 @@ Windows, Linux and MacOS releases are available.
 
 # Is it safe?
 
-Juice Client is 100% completely safe to use. Releases are built directly with the source code using Github Workflows (Thanks Error!). If you face any issues, join our [discord](https://discord.gg/FjzAAdSjng) to report bugs.
+Juice Client is 100% completely safe to use. Releases are built directly with the source code using Github Workflows (Thanks Error!). If you face any issues, join our [discord](https://discord.gg/jPgezmpNwm) to report bugs.
 
 ## Credits
 - skywalk
