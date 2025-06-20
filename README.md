@@ -5,7 +5,7 @@ A light Electron client for Kirka.io. Join our [discord](https://discord.gg/jPge
 # Download
 
 
-Windows, Linux and MacOS releases are available.
+Windows releases are available.
 # What features does this have?
 
 - Uncapped FPS
