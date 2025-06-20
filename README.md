@@ -5,7 +5,7 @@ A light Electron client for Kirka.io. Join our [discord](https://discord.gg/jPge
 # Download
 
 
-Windows releases are available.
+Windows releases are not available, feel free to compile your own.
 
 # Install
 
