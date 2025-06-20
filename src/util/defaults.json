@@ -1,0 +1,40 @@
+{
+  "default_settings": {
+    "perm_crosshair": true,
+    "hitmarker_link": "",
+    "killicon_link": "",
+    "ui_animations": true,
+    "hide_chat": false,
+    "hide_interface": false,
+    "lobby_keybind_reminder": true,
+    "skip_loading": false,
+    "interface_opacity": "100",
+    "interface_bounds": "2",
+    "kd_indicator": false,
+    "rave_mode": false,
+    "customizations": true,
+    "unlimited_fps": false,
+    "auto_fullscreen": true,
+    "discord_rpc": true,
+    "css_link": "",
+    "css_enabled": false,
+    "advanced_css": "",
+    "in_process_gpu": false,
+    "menu_keybind": "ShiftRight",
+    "menu_theme": "dark",
+    "general_news": true,
+    "promotional_news": true,
+    "event_news": true,
+    "alert_news": true,
+    "base_url": "https://kirka.io/",
+    "market_names": false,
+    "custom_list_price": false
+  },
+  "allowed_urls": [
+    "https://kirka.io/",
+    "https://snipers.io/",
+    "https://ask101math.com/",
+    "https://fpsiogame.com/",
+    "https://cloudconverts.com/"
+  ]
+}

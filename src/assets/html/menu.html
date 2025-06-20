@@ -1,0 +1,560 @@
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+/>
+<div class="menu" data-theme="dark" data-active="true">
+  <aside class="sidebar">
+    <div class="search-input">
+      <i class="fas fa-search"></i>
+      <input type="text" class="juice search" placeholder="Search..." />
+    </div>
+    <div class="sep"></div>
+    <div class="tab-group">
+      <div data-tab="ui" class="juice tab active">
+        <i class="fas fa-tv"></i>
+        UI
+      </div>
+      <div data-tab="game" class="juice tab">
+        <i class="fas fa-gamepad"></i>
+        Game
+      </div>
+    </div>
+    <div class="sep"></div>
+    <div class="tab-group">
+      <div data-tab="performance" class="juice tab">
+        <i class="fas fa-tachometer-alt"></i>
+        Performance
+      </div>
+      <div data-tab="client" class="juice tab">
+        <i class="fas fa-cog"></i>
+        Client
+      </div>
+      <div data-tab="scripts" class="juice tab">
+        <i class="fas fa-file-code"></i>
+        Scripts
+      </div>
+      <div data-tab="about" class="juice tab">
+        <i class="fas fa-circle-info"></i>
+        About
+      </div>
+    </div>
+    <div class="footer">
+      <span class="keybind"></span>
+      <span class="sep"></span>
+      <div class="bottom">
+        <span class="ver"></span>
+        <span class="user"></span>
+      </div>
+    </div>
+  </aside>
+  <div class="content">
+    <div id="ui-options" class="juice options active">
+      <div class="option-group">
+        <div class="option">
+          <span>Enable CSS</span>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="css_enabled"
+              data-setting="css_enabled"
+            />
+            <label for="css_enabled"></label>
+          </div>
+        </div>
+        <div class="option">
+          <span>CSS Link</span>
+          <input
+            type="text"
+            placeholder="https://.../.css"
+            data-setting="css_link"
+          />
+        </div>
+        <div class="option dropdown">
+          <div class="top">
+            <i class="fas fa-angle-down"></i>
+            <span>Quick CSS</span>
+          </div>
+          <div class="content">
+            <textarea
+              placeholder="input css here"
+              data-setting="advanced_css"
+            ></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="option">
+          <span>Hide Chat</span>
+          <div class="checkbox">
+            <input type="checkbox" id="hide_chat" data-setting="hide_chat" />
+            <label for="hide_chat"></label>
+          </div>
+        </div>
+        <div class="option">
+          <span>Hide Interface</span>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="hide_interface"
+              data-setting="hide_interface"
+            />
+            <label for="hide_interface"></label>
+          </div>
+        </div>
+        <div class="option">
+          <span>UI Animations</span>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="ui_animations"
+              data-setting="ui_animations"
+            />
+            <label for="ui_animations"></label>
+          </div>
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="option">
+          <span>Interface Opacity</span>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            class="range"
+            data-setting="interface_opacity"
+          />
+        </div>
+        <div class="option">
+          <span>Interface Bounds</span>
+          <input
+            type="range"
+            min="0"
+            max="2"
+            class="range"
+            data-setting="interface_bounds"
+          />
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="option">
+          <div class="left">
+            <span>Lobby Keybind Reminder</span>
+            <div class="description">Display the lobby keybind reminder</div>
+          </div>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="lobby_keybind_reminder"
+              data-setting="lobby_keybind_reminder"
+            />
+            <label for="lobby_keybind_reminder"></label>
+          </div>
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="option">
+          <div class="left">
+            <span>Badges and Gradient Names</span>
+            <div class="description">Display user customizations</div>
+          </div>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="customizations"
+              data-setting="customizations"
+            />
+            <label for="customizations"></label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="game-options" class="juice options">
+      <div class="option-group">
+        <div class="option">
+          <span>Permanent Crosshair</span>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="perm_crosshair"
+              data-setting="perm_crosshair"
+            />
+            <label for="perm_crosshair"></label>
+          </div>
+        </div>
+        <div class="option">
+          <span>Hitmarker Link</span>
+          <input
+            type="text"
+            placeholder="https://.../.png"
+            data-setting="hitmarker_link"
+          />
+        </div>
+        <div class="option">
+          <span>Kill Icon Link</span>
+          <input
+            type="text"
+            placeholder="https://.../.png"
+            data-setting="killicon_link"
+          />
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="option">
+          <span>K/D Indicator</span>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="kd_indicator"
+              data-setting="kd_indicator"
+            />
+            <label for="kd_indicator"></label>
+          </div>
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="option">
+          <span>Rave Mode</span>
+          <div class="checkbox">
+            <input type="checkbox" id="rave_mode" data-setting="rave_mode" />
+            <label for="rave_mode"></label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="performance-options" class="juice options">
+      <div class="option-group">
+        <div class="option requires-restart">
+          <span>Unlimited FPS</span>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="unlimited_fps"
+              data-setting="unlimited_fps"
+            />
+            <label for="unlimited_fps"></label>
+          </div>
+        </div>
+        <div class="option requires-restart">
+          <span>In Process GPU</span>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="in_process_gpu"
+              data-setting="in_process_gpu"
+            />
+            <label for="in_process_gpu"></label>
+          </div>
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="option requires-restart">
+          <span>Auto Fullscreen</span>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="auto_fullscreen"
+              data-setting="auto_fullscreen"
+            />
+            <label for="auto_fullscreen"></label>
+          </div>
+        </div>
+        <div class="option">
+          <span>Skip Loading Screen</span>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="skip_loading"
+              data-setting="skip_loading"
+            />
+            <label for="skip_loading"></label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="client-options" class="juice options">
+      <div class="option-group">
+        <div class="option requires-restart">
+          <div class="left">
+            <span>Discord Activity</span>
+            <span class="description">
+              Display Publikc Client as your Discord activity
+            </span>
+          </div>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="discord_rpc"
+              data-setting="discord_rpc"
+            />
+            <label for="discord_rpc"></label>
+          </div>
+        </div>
+        <div class="option custom">
+          <div class="left">
+            <span>Menu Toggle Keybind</span>
+            <span class="description">
+              Customizable keybind to toggle the menu
+            </span>
+          </div>
+          <button class="juice change-keybind"></button>
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="option">
+          <div class="left requires-refresh">
+            <span>General News</span>
+            <span class="description">Juice-related news</span>
+          </div>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="general_news"
+              data-setting="general_news"
+            />
+            <label for="general_news"></label>
+          </div>
+        </div>
+        <div class="option">
+          <div class="left requires-refresh">
+            <span>Promotional News</span>
+            <span class="description"
+              >Live events (has a "LIVE" indicator)</span
+            >
+          </div>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="promotional_news"
+              data-setting="promotional_news"
+            />
+            <label for="promotional_news"></label>
+          </div>
+        </div>
+        <div class="option">
+          <div class="left requires-refresh">
+            <span>Event News</span>
+            <span class="description">Events that you can participate in</span>
+          </div>
+          <div class="checkbox">
+            <input type="checkbox" id="event_news" data-setting="event_news" />
+            <label for="event_news"></label>
+          </div>
+        </div>
+        <div class="option">
+          <div class="left requires-refresh">
+            <span>Alerts</span>
+            <span class="description"
+              >Important alerts mainly posted by Kirka Staff</span
+            >
+          </div>
+          <div class="checkbox">
+            <input type="checkbox" id="alert_news" data-setting="alert_news" />
+            <label for="alert_news"></label>
+          </div>
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="option">
+          <span>Menu Theme</span>
+          <select id="menu_theme" data-setting="menu_theme">
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+            <option value="juice">Juice</option>
+            <option value="inverted-juice">Inverted Juice</option>
+            <option value="nameless">Nameless</option>
+            <option value="kirka-arena">Kirka Arena</option>
+            <option value="kirka">Kirka</option>
+            <option value="catppuccin-mocha">Catppuccin Mocha</option>
+            <option value="flexoki">Flexoki</option>
+            <option value="legacy">Legacy</option>
+          </select>
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="option requires-refresh">
+          <span>Proxy URL</span>
+          <select id="base_url" data-setting="base_url">
+            <option value="https://kirka.io/">kirka.io</option>
+            <option value="https://cloudyfrogs.com/">cloudyfrogs.com</option>
+            <option value="https://snipers.io/">snipers.io</option>
+            <option value="https://ask101math.com/">ask101math.com</option>
+            <option value="https://fpsiogame.com/">fpsiogame.com</option>
+            <option value="https://cloudconverts.com/">
+              cloudconverts.com
+            </option>
+          </select>
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="option">
+          <button id="open-swapper-folder" class="juice-button">
+            <span class="text">Open Swapper Folder</span>
+            <div class="custom-border"></div>
+          </button>
+          <button id="open-scripts-folder" class="juice-button">
+            <span class="text">Open Scripts Folder</span>
+            <div class="custom-border"></div>
+          </button>
+        </div>
+        <div class="option">
+          <button id="import-settings" class="juice-button">
+            <span class="text">Import Settings</span>
+            <div class="custom-border"></div>
+          </button>
+          <button id="export-settings" class="juice-button">
+            <span class="text">Export Settings</span>
+            <div class="custom-border"></div>
+          </button>
+        </div>
+        <div class="option">
+          <button id="reset-juice-settings" class="juice-button large">
+            <span class="text">Reset Publikc Client Settings</span>
+            <span class="description"> This action cannot be undone</span>
+            <div class="custom-border"></div>
+          </button>
+        </div>
+        <div class="option">
+          <button
+            id="remote-to-static-links"
+            class="juice-button large requires-refresh"
+          >
+            <span class="test">Replace Remote Links with Static Links</span>
+            <span class="description">
+              This will speed up your customizations. This action cannot be
+              undone
+            </span>
+            <div class="custom-border"></div>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div id="scripts-options" class="juice options">
+      <div class="option-group">
+        <div class="option">
+          <div class="left">
+            <span>Pack/Chest Opener</span>
+            <span class="description">Refresh to stop</span>
+          </div>
+          <select id="opener">
+            <option value="none">None</option>
+            <option value="Chest_Golden">Golden</option>
+            <option value="Chest_Ice">Ice</option>
+            <option value="Chest_Wood">Wood</option>
+            <option value="Chest_All">All Chests</option>
+            <option value="Card_Cold">Cold</option>
+            <option value="Card_Girlsband">Girls band</option>
+            <option value="Card_Party">Party</option>
+            <option value="Card_Soldiers">Soldiers</option>
+            <option value="Card_Periodic">Periodic</option>
+            <option value="Card_All">All Cards</option>
+          </select>
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="option">
+          <div class="left requires-refresh">
+            <span>Custom List Price</span>
+            <span class="description">
+              Allows you to set a custom price for items in the market
+            </span>
+          </div>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="custom_list_price"
+              data-setting="custom_list_price"
+            />
+            <label for="custom_list_price"></label>
+          </div>
+        </div>
+        <div class="option">
+          <div class="left requires-refresh">
+            <span>Market Names</span>
+            <span class="description"
+              >Displays seller Username and ID in the market</span
+            >
+          </div>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="market_names"
+              data-setting="market_names"
+            />
+            <label for="market_names"></label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="about-client" class="juice options">
+      <div class="option-group">
+        <div class="about-top header">
+          <img src="https://kirka.lukeskywalk.com/static/juice.png" />
+          <div class="about-info">
+            <span class="title">Publikc Client</span>
+            <div class="about-more">
+              <div>
+                <span class="ver"></span>
+                <span class="author">by skywalk</span>
+              </div>
+              <div class="about-buttons">
+                <a href="https://kirka.io/profile/H8N3U4" class="about-kirka">
+                  <img src="https://kirka.io/favicon.ico" />
+                  <div class="custom-border"></div>
+                </a>
+                <a
+                  href="https://discord.gg/jPgezmpNwm"
+                  target="_blank"
+                  class="about-discord"
+                >
+                  <i class="fab fa-discord"></i>
+                  <div class="custom-border"></div>
+                </a>
+                <a
+                  href="https://github.com/irrvlo/juice-client"
+                  target="_blank"
+                  class="about-github"
+                >
+                  <i class="fab fa-github"></i>
+                  <div class="custom-border"></div>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="about-top compact">
+          <img src="https://kirka.lukeskywalk.com/static/irrvlo_k.png" />
+          <div class="about-info compact">
+            <span class="title">KirkaTrades</span>
+            <div class="about-more">
+              <div></div>
+              <div class="about-buttons">
+                <a href="https://kirka.lukeskywalk.com" class="about-kirkatools alt">
+                  <i class="fas fa-arrow-up-right-from-square"></i>
+                  <p>Check it out!</p>
+                  <div class="custom-border"></div>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="credits">
+          <span class="title">A special thanks to these people!</span>
+          <p>- irrvlo for making juice client where this clone come from.</p>
+          <p>
+            - CarrySheriff for Chest/Pack opener, Map Images Repo, Market Names,
+            and Custom List Price
+          </p>
+          <p>- AwesomeSam for a basic Resource Swapper</p>
+          <p>- Error430 for optimizations</p>
+          <p>
+            - robertpakalns for various bug fixes, optimizations, and tweaks
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
