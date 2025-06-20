@@ -12,7 +12,7 @@ Windows releases are available.
 - Download all the source
 - open cmd.exe in windows
 - move to the folder
-- install node.js from node.js official website for windows
+- install node.js from node.js official website for windows [download node.js](https://nodejs.org/en)
 - `npm install`
 - `npm i v8-compile-cache --save`
 - to launch type: `npx electron .`
