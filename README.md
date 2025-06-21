@@ -1,6 +1,7 @@
 # Publikc Client
 
 A light Electron client for Kirka.io. Join our [discord](https://discord.gg/jPgezmpNwm) for support and update notifications.
+
 Based on Juice client. [juice github](https://github.com/irrvlo/juice-client)
 
 # Download
@@ -71,7 +72,7 @@ Simply type `npx electron-builder --win` before launching, it will create .exe i
 
 # Is it safe?
 
-Juice Client is 100% completely safe to use. Releases are built directly with the source code using Github Workflows (Thanks Error!). If you face any issues, join our [discord](https://discord.gg/jPgezmpNwm) to report bugs.
+PubliKC Client is 100% completely safe to use. Releases are built on my computer and uploaded to github which has anti-virus or build your own .exe. If you face any issues, join our [discord](https://discord.gg/jPgezmpNwm) to report bugs.
 
 ## Credits
 - skywalk
