@@ -1,11 +1,16 @@
 # Publikc Client
 
 A light Electron client for Kirka.io. Join our [discord](https://discord.gg/jPgezmpNwm) for support and update notifications.
+Based on Juice client. [juice github](https://github.com/irrvlo/juice-client)
 
 # Download
 
 
 Windows releases are not available, feel free to compile your own.
+
+But you can build your own executable (.exe) after you are ready to launch the game in the Install step.
+
+Simply type `npx electron-builder --win` before launching, it will create .exe in the /build folder and use that instead of `npx electron .` to launch.
 
 # Install
 
