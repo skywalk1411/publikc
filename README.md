@@ -20,7 +20,8 @@ Simply type `npx electron-builder --win` before launching, it will create .exe i
 - install node.js from node.js official website for windows [download node.js](https://nodejs.org/en)
 - `npm install`
 - `npm i v8-compile-cache --save`
-- to launch type: `npx electron .`
+- you can build an executable (.exe) `npx electron-builder --win` they will save in folder /build.
+- to launch type: `npx electron .` or launch the executable in /build/publikc-setup-win-*-1.1.*.exe.
 
 # What features does this have?
 
