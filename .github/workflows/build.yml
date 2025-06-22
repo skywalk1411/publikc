@@ -18,6 +18,9 @@ jobs:
 
       - name: build
         run: .\automate.ps1
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: upload build
         uses: actions/upload-artifact@v4.6.2
