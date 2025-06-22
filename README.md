@@ -1,11 +1,13 @@
 # Publikc Client
 
+![ss](https://github.com/user-attachments/assets/d0f2345a-f4b1-490e-8948-bb0d38ee25de)
+
+
 A light Electron client for Kirka.io. Join our [discord](https://discord.gg/jPgezmpNwm) for support and update notifications.
 
 Based on Juice client. [juice github](https://github.com/irrvlo/juice-client)
 
 # Download
-
 
 Windows releases are not available, feel free to compile your own.
 
