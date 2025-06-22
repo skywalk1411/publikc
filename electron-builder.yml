@@ -1,5 +1,5 @@
-appId: xyz.irrvlo.juice
-productName: Juice Client
+appId: xyz.skywalk.publikc
+productName: Publikc
 directories:
   output: "build"
 npmRebuild: false
@@ -24,6 +24,6 @@ linux:
   artifactName: "${name}-${version}-linux-${arch}.${ext}"
 publish:
   - provider: github
-    owner: irrvlo
-    repo: juice-client
+    owner: skywalk
+    repo: publikc
     releaseType: draft
