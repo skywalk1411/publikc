@@ -18,3 +18,5 @@ jobs:
         with:
           name: publikc-setup-win-x64-1.1.181.exe
           path: build/publikc-setup-win-x64-1.1.181.exe
+    env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
