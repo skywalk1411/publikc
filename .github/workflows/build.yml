@@ -36,7 +36,3 @@ jobs:
         with:
           name: publikc-setup-win-x64-${{ steps.pkg.outputs.version }}.exe
           path: build/publikc-setup-win-x64-${{ steps.pkg.outputs.version }}.exe
-
-        with:
-          name: publikc-setup-win-x64-${{ steps.pkg.outputs.version }}.exe
-          path: build/publikc-setup-win-x64-${{ steps.pkg.outputs.version }}.exe
