@@ -20,23 +20,23 @@ jobs:
           node-version: 18
       - name: install deps
         run: npm ci
-      - name: build
-        run: .\automate.ps1
       - name: extract version
         id: pkg
         run: echo "version=$(node -p 'require(\"./package.json\").version')" >> $env:GITHUB_OUTPUT
-      # --- start_change ---
-      - name: create or update release
+      - name: create draft release
         uses: softprops/action-gh-release@v2.0.6
         with:
           tag_name: v${{ steps.pkg.outputs.version }}
           name: Release ${{ steps.pkg.outputs.version }}
-          draft: false
-          prerelease: false
-          files: build/publikc-setup-win-x64-${{ steps.pkg.outputs.version }}.exe
-      # --- end_change ---
+          draft: true
+      - name: build
+        run: .\automate.ps1
       - name: upload build
         uses: actions/upload-artifact@v4.6.2
+        with:
+          name: publikc-setup-win-x64-${{ steps.pkg.outputs.version }}.exe
+          path: build/publikc-setup-win-x64-${{ steps.pkg.outputs.version }}.exe
+
         with:
           name: publikc-setup-win-x64-${{ steps.pkg.outputs.version }}.exe
           path: build/publikc-setup-win-x64-${{ steps.pkg.outputs.version }}.exe
