@@ -38,6 +38,8 @@ jobs:
           draft: true
       - name: build
         run: .\automate.ps1
+      - name: List build directory
+        run: ls -l build
       - name: upload build
         uses: actions/upload-artifact@v4.6.2
         with:
