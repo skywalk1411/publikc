@@ -13,5 +13,5 @@ win:
   artifactName: "${name}-setup-win-${arch}-${version}.${ext}"
 publish:
     provider: github
-    owner: skywalk
+    owner: skywalk1411
     repo: publikc
