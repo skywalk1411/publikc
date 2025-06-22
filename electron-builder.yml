@@ -12,7 +12,6 @@ win:
   icon: "src/assets/img/icon.png"
   artifactName: "${name}-setup-win-${arch}-${version}.${ext}"
 publish:
-  - provider: github
+    provider: github
     owner: skywalk
     repo: publikc
-    releaseType: draft
