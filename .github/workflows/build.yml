@@ -43,5 +43,9 @@ jobs:
       - name: upload build
         uses: actions/upload-artifact@v4.6.2
         with:
-          name: publikc-setup-win-x64-${{ steps.pkg.outputs.version }}.exe
-          path: build/publikc-setup-win-x64-${{ steps.pkg.outputs.version }}.exe
+          name: publikc-setup-win-x64.exe
+          path: build/publikc-setup-win-x64-*.exe
+          if-no-files-found: warn
+          compression-level: 6
+          overwrite: false
+          include-hidden-files: false
