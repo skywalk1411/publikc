@@ -1,47 +1,42 @@
-name: Build
-
+name: build app
 on:
-  workflow_dispatch:
+  push:
+  pull_request:
+    types: [opened, synchronize]
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    permissions:
-      contents: write
+    name: build
+    runs-on: windows-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    strategy:
-      matrix:
-        os: [windows-latest]
-        include:
-          - os: windows-latest
-            arch: x64
-
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
+      - name: checkout
+        uses: actions/checkout@v3.5.2
+      - name: setup node
         uses: actions/setup-node@v4
         with:
           node-version: 18
-
-      - name: Install Dependencies
+      - name: install deps
         run: npm ci
-
-      - name: Extract version and name
+      - name: build
+        run: .\automate.ps1
+      - name: extract version
         id: pkg
-        run: |
-          echo "version=$(node -p 'require(\"./package.json\").version')" >> $GITHUB_OUTPUT
-          echo "name=$(node -p 'require(\"./package.json\").name')" >> $GITHUB_OUTPUT
-
-      - name: Create draft release
+        run: echo "version=$(node -p 'require(\"./package.json\").version')" >> $env:GITHUB_OUTPUT
+      # --- start_change ---
+      - name: create or update release
         uses: softprops/action-gh-release@v2.0.6
         with:
           tag_name: v${{ steps.pkg.outputs.version }}
           name: Release ${{ steps.pkg.outputs.version }}
-          draft: true
-
-      - name: Build / package / publish
-        run: npm run build
+          draft: false
+          prerelease: false
+          files: build/publikc-setup-win-x64-${{ steps.pkg.outputs.version }}.exe
+      # --- end_change ---
+      - name: upload build
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: publikc-setup-win-x64-${{ steps.pkg.outputs.version }}.exe
+          path: build/publikc-setup-win-x64-${{ steps.pkg.outputs.version }}.exe
