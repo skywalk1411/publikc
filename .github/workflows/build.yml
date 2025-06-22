@@ -18,5 +18,16 @@ jobs:
         with:
           name: publikc-setup-win-x64-1.1.181.exe
           path: build/publikc-setup-win-x64-1.1.181.exe
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2.0.6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.get_version_name.outputs.version }}
+          name: Release ${{ steps.get_version_name.outputs.version }}
+          draft: true
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
     env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
