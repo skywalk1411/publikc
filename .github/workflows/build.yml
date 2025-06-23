@@ -1,50 +1,71 @@
 name: build app
+
 on:
   push:
     branches:
       - main
   pull_request:
     types: [opened, synchronize]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   build:
-    name: build
-    runs-on: windows-latest
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-13, ubuntu-latest]
+        include:
+          - os: windows-latest
+            build_script: .\automate.ps1
+            artifact: build/publikc-setup-win-x64-*.exe
+            artifact_name: publikc-setup-win-x64.exe
+          - os: macos-13
+            build_script: ./automate.sh
+            artifact: build/publikc-setup-mac-x64-*
+            artifact_name: publikc-setup-mac-x64.dmg
+          - os: ubuntu-latest
+            build_script: ./automate.sh
+            artifact: build/publikc-setup-linux-x64-*
+            artifact_name: publikc-setup-linux-x64.AppImage
+
     steps:
-      - name: checkout
-        uses: actions/checkout@v3.5.2
-      - name: setup node
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
-      - name: install deps
+
+      - name: Install dependencies
         run: npm ci
+
       - name: Get version from package.json
-        run: |
-          $version = node -p "require('./package.json').version"
-          echo "version=$version" >> $env:GITHUB_OUTPUT
-        shell: pwsh
-      - name: create draft release
+        id: pkg
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Create draft release
         uses: softprops/action-gh-release@v2.0.6
         with:
           tag_name: v${{ steps.pkg.outputs.version }}
           name: Release ${{ steps.pkg.outputs.version }}
           draft: true
-      - name: build
-        run: .\automate.ps1
+
+      - name: Build
+        run: ${{ matrix.build_script }}
+        shell: bash
+
       - name: List build directory
         run: ls -l build
-      - name: upload build
-        uses: actions/upload-artifact@v4.6.2
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: publikc-setup-win-x64.exe
-          path: build/publikc-setup-win-x64-*.exe
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact }}
           if-no-files-found: warn
           compression-level: 6
           overwrite: false
