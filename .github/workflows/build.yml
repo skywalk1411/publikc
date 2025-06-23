@@ -23,11 +23,11 @@ jobs:
             artifact: build/publikc-setup-win-x64-*.exe
             artifact_name: publikc-setup-win-x64.exe
           - os: macos-13
-            build_script: ./automate.sh
+            build_script: ./automate.ps1
             artifact: build/publikc-setup-mac-x64-*
             artifact_name: publikc-setup-mac-x64.dmg
           - os: ubuntu-latest
-            build_script: ./automate.sh
+            build_script: ./automate.ps1
             artifact: build/publikc-setup-linux-x64-*
             artifact_name: publikc-setup-linux-x64.AppImage
 
@@ -67,15 +67,9 @@ jobs:
           name: Release ${{ steps.pkg.outputs.version }}
           draft: true
 
-      - name: Build (Windows)
-        if: matrix.os == 'windows-latest'
+      - name: Build
         run: ${{ matrix.build_script }}
         shell: pwsh
-
-      - name: Build (Unix)
-        if: matrix.os != 'windows-latest'
-        run: ${{ matrix.build_script }}
-        shell: bash
 
       - name: List build directory
         run: ls -l build
