@@ -43,7 +43,8 @@ jobs:
 
       - name: Kill node processes (Windows only)
         if: runner.os == 'Windows'
-        run: taskkill /F /IM node.exe || exit 0
+        run: |
+          taskkill /F /IM node.exe -ErrorAction SilentlyContinue
 
       - name: Clean node_modules
         run: npx rimraf node_modules
@@ -61,7 +62,8 @@ jobs:
 
       - name: Get version from package.json
         id: pkg
-        run: echo "version=$(node -p \"require('./package.json').version\")" >> $GITHUB_OUTPUT
+        run: |
+          echo "version=$(node -p 'require(\"./package.json\").version')" >> $GITHUB_OUTPUT
 
       - name: Create draft release
         uses: softprops/action-gh-release@v2.0.6
