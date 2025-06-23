@@ -43,9 +43,10 @@ jobs:
 
       - name: Kill node processes (Windows only)
         if: runner.os == 'Windows'
-        run: |
-          try { taskkill /F /IM node.exe } catch { }
         shell: pwsh
+        run: |
+          taskkill /F /IM node.exe
+          if (!$?) { Write-Host "Ignoring error from taskkill"; exit 0 }
 
       - name: Clean node_modules
         run: npx rimraf node_modules
