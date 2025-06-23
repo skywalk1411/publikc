@@ -61,7 +61,7 @@ jobs:
 
       - name: Get version from package.json
         id: pkg
-        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+        run: echo "version=$(node -p \"require('./package.json').version\")" >> $GITHUB_OUTPUT
 
       - name: Create draft release
         uses: softprops/action-gh-release@v2.0.6
@@ -70,9 +70,15 @@ jobs:
           name: Release ${{ steps.pkg.outputs.version }}
           draft: true
 
-      - name: Build
+      - name: Build (Windows)
+        if: matrix.os == 'windows-latest'
         run: ${{ matrix.build_script }}
-        shell: ${{ runner.os == 'Windows' && 'pwsh' || 'bash' }}
+        shell: pwsh
+
+      - name: Build (Unix)
+        if: matrix.os != 'windows-latest'
+        run: ${{ matrix.build_script }}
+        shell: bash
 
       - name: List build directory
         run: ls -l build
