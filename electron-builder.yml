@@ -11,6 +11,17 @@ win:
         - ia32
   icon: "src/assets/img/icon.png"
   artifactName: "${name}-setup-win-${arch}-${version}.${ext}"
+mac:
+  target: dmg
+  icon: "src/assets/img/icon.icns"
+  artifactName: "${name}-setup-mac-${version}.${ext}"
+linux:
+  target:
+    - AppImage
+    - tar.gz
+  category: Game
+  icon: "src/assets/img/icon.png"
+  artifactName: "${name}-${version}-linux-${arch}.${ext}"
 publish:
     provider: github
     owner: skywalk1411
