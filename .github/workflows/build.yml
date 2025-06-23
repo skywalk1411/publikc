@@ -1,85 +1,57 @@
-name: build app
+name: Build
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    types: [opened, synchronize]
   workflow_dispatch:
-
-permissions:
-  contents: write
 
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+
+    permissions:
+      contents: write
+
     strategy:
       matrix:
-        os: [windows-latest, macos-13, ubuntu-latest]
+        os: [macos-13, windows-latest, ubuntu-latest]
         include:
           - os: windows-latest
-            build_script: .\automate.ps1
-            artifact: build/publikc-setup-win-x64-*.exe
-            artifact_name: publikc-setup-win-x64.exe
+            arch: x64
           - os: macos-13
-            build_script: ./automate.ps1
-            artifact: build/publikc-setup-mac-x64-*
-            artifact_name: publikc-setup-mac-x64.dmg
+            arch: x64
           - os: ubuntu-latest
-            build_script: ./automate.ps1
-            artifact: build/publikc-setup-linux-x64-*
-            artifact_name: publikc-setup-linux-x64.AppImage
+            arch: x64
 
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
-          cache: 'npm'
+          node-version: '18.x'
 
-      - name: Clean node_modules
-        run: npx rimraf node_modules
+      - name: Install Dependencies
+        run: npm install
 
-      - name: Cache node modules
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Install dependencies
-        run: npm ci --prefer-offline
-
-      - name: Get version from package.json
-        id: pkg
+      - name: Get version and name from package.json
+        id: get_version_name
         run: |
-          echo "version=$(node -p 'require(\"./package.json\").version')" >> $GITHUB_OUTPUT
-
-      - name: Create draft release
-        uses: softprops/action-gh-release@v2.0.6
-        with:
-          tag_name: v${{ steps.pkg.outputs.version }}
-          name: Release ${{ steps.pkg.outputs.version }}
-          draft: true
-
-      - name: Build
-        run: ${{ matrix.build_script }}
+          $version = node -p "require('./package.json').version"
+          echo "version=$version" >> $env:GITHUB_OUTPUT
         shell: pwsh
-
-      - name: List build directory
-        run: ls -l build
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2.0.6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: publikc-${{ steps.pkg.outputs.version }}-${{ matrix.artifact_name }}
-          path: ${{ matrix.artifact }}
-          if-no-files-found: warn
-          compression-level: 6
-          overwrite: false
-          include-hidden-files: false
+          tag_name: v${{ steps.get_version_name.outputs.version }}
+          name: Release ${{ steps.get_version_name.outputs.version }}
+          draft: true
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Electron App
+        run: npm run build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
