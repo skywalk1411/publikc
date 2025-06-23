@@ -1,6 +1,6 @@
 {
   "name": "publikc",
-  "version": "1.1.181",
+  "version": "1.1.182",
   "description": "Electron client for Kirka.io",
   "main": "src/main.js",
   "scripts": {
@@ -23,7 +23,7 @@
     "electron-localshortcut": "^3.2.1",
     "electron-store": "^8.2.0",
     "electron-updater": "^6.2.1",
-    "v8-compile-cache": "^2.4.0"
+    "v8-compile-cache": "^2.4.0"  
   },
   "optionalDependencies": {
     "dmg-license": "^1.0.11"
