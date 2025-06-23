@@ -55,3 +55,5 @@ jobs:
         run: npm run build
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: List build directory
+        run: ls -l build
