@@ -1,6 +1,6 @@
 {
   "name": "publikc",
-  "version": "1.1.182",
+  "version": "1.1.19",
   "description": "Electron client for Kirka.io",
   "main": "src/main.js",
   "scripts": {
@@ -9,10 +9,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/skywalk1411/publikc.git"
+    "url": "https://github.com/irrvlo/juice-client.git"
   },
   "keywords": [],
-  "author": "skywalk1411",
+  "author": "skywalk, irrvlo",
   "license": "ISC",
   "devDependencies": {
     "electron": "^10.4.7",
@@ -23,9 +23,10 @@
     "electron-localshortcut": "^3.2.1",
     "electron-store": "^8.2.0",
     "electron-updater": "^6.2.1",
-    "v8-compile-cache": "^2.4.0"  
+    "v8-compile-cache": "^2.4.0"
   },
   "optionalDependencies": {
-    "dmg-license": "^1.0.11"
+    "dmg-license": "^1.0.11",
+    "@juice-client/node-enject": "^1.0.3"
   }
 }
