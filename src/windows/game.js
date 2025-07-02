@@ -93,6 +93,22 @@ const createWindow = () => {
     },
   });
 
+  gameWindow.once("ready-to-show", async ()=> {
+    if (process.platform === "win32") {
+      const { default: enject } = await import("@juice-client/node-enject")
+
+      const handleBuffer = gameWindow.getNativeWindowHandle()
+      let hwnd
+
+      if (process.arch === "x64" || process.arch === "arm64") hwnd = Number(handleBuffer.readBigUInt64LE(0))
+      else hwnd = handleBuffer.readUInt32LE(0)
+
+      enject.startHook(hwnd)
+  }
+
+  gameWindow.show()
+  })
+
   const scriptsPath = path.join(
     app.getPath("documents"),
     "publikc",
