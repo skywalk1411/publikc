@@ -1,14 +1,16 @@
-const { app, clipboard, screen } = require("electron");
-const shortcut = require("electron-localshortcut");
-const Store = require("electron-store");
-const store = new Store();
-const { initResourceSwapper } = require("../addons/swapper");
+import { app, clipboard, screen, BrowserWindow } from "electron";
+import * as shortcut from "electron-localshortcut";
+import Store from "electron-store";
 
-const registerShortcuts = (window) => {
-  const register = (key, action) => shortcut.register(window, key, action);
+const store = new Store();
+
+export function registerShortcuts(window: BrowserWindow): void {
+  const register = (key: string, action: () => void) => shortcut.register(window, key, action);
+
   register("Escape", () =>
     window.webContents.executeJavaScript("document.exitPointerLock()")
   );
+
   register("F2", () => {
     const { x, y, width, height } = screen.getPrimaryDisplay().bounds;
     window.capturePage({ x, y, width, height }).then((image) => {
@@ -19,15 +21,20 @@ const registerShortcuts = (window) => {
       });
     });
   });
+
   register("F4", () => {
-    window.loadURL(store.get("settings").base_url);
+    const settings = store.get("settings") as any;
+    window.loadURL(settings.base_url);
   });
+
   register("F5", () => {
     window.reload();
   });
+
   register("F6", () => {
     window.loadURL(clipboard.readText());
   });
+
   register("F7", () => clipboard.writeText(window.webContents.getURL()));
   register("F11", () => window.setFullScreen(!window.isFullScreen()));
   register("F12", () => window.webContents.toggleDevTools());
@@ -35,6 +42,4 @@ const registerShortcuts = (window) => {
   register("Ctrl+Shift+C", () => window.webContents.toggleDevTools());
   register("Ctrl+Shift+J", () => window.webContents.toggleDevTools());
   register("Alt+F4", () => app.quit());
-};
-
-module.exports = { registerShortcuts };
+}

@@ -1,9 +1,18 @@
-const { ipcRenderer } = require("electron");
-const fs = require("fs");
-const path = require("path");
-const { version } = require("../../package.json");
+import { ipcRenderer } from "electron";
+import * as fs from "fs";
+import * as path from "path";
+import { version } from "../../package.json";
+import type { Settings } from '../types';
 
 class Menu {
+  private settings: Settings;
+  private menuCSS: string;
+  private menuHTML: string;
+  private menu: HTMLDivElement;
+  private localStorage: Storage;
+  private menuToggle: HTMLElement;
+  private tabToContentMap: { [key: string]: HTMLElement };
+
   constructor() {
     this.settings = ipcRenderer.sendSync("get-settings");
     this.menuCSS = fs.readFileSync(
@@ -16,31 +25,31 @@ class Menu {
     );
     this.menu = this.createMenu();
     this.localStorage = window.localStorage;
-    this.menuToggle = this.menu.querySelector(".menu");
+    this.menuToggle = this.menu.querySelector(".menu")!;
     this.tabToContentMap = {
-      ui: this.menu.querySelector("#ui-options"),
-      game: this.menu.querySelector("#game-options"),
-      performance: this.menu.querySelector("#performance-options"),
-      client: this.menu.querySelector("#client-options"),
-      scripts: this.menu.querySelector("#scripts-options"),
-      about: this.menu.querySelector("#about-client"),
+      ui: this.menu.querySelector("#ui-options")!,
+      game: this.menu.querySelector("#game-options")!,
+      performance: this.menu.querySelector("#performance-options")!,
+      client: this.menu.querySelector("#client-options")!,
+      scripts: this.menu.querySelector("#scripts-options")!,
+      about: this.menu.querySelector("#about-client")!,
     };
   }
 
-  createMenu() {
+  private createMenu(): HTMLDivElement {
     const menu = document.createElement("div");
     menu.innerHTML = this.menuHTML;
     menu.id = "juice-menu";
     menu.style.cssText =
       "z-index: 99999999; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);";
-	const menuCSS = document.createElement("style");
-	menuCSS.innerHTML = this.menuCSS
-	menu.prepend(menuCSS);
+    const menuCSS = document.createElement("style");
+    menuCSS.innerHTML = this.menuCSS;
+    menu.prepend(menuCSS);
     document.body.appendChild(menu);
-    return menu;
+    return menu as HTMLDivElement;
   }
 
-  init() {
+  init(): void {
     this.setVersion();
     this.setUser();
     this.setKeybind();
@@ -58,66 +67,69 @@ class Menu {
       ? this.handleTabChange(
           this.menu.querySelector(
             `[data-tab="${this.localStorage.getItem("juice-menu-tab")}"]`
-          )
+          )!
         )
-      : this.handleTabChange(this.menu.querySelector(".juice.tab"));
+      : this.handleTabChange(this.menu.querySelector(".juice.tab")!);
   }
 
-  setVersion() {
-    this.menu.querySelectorAll(".ver").forEach((element) => {
-      element.innerText = `v${version}`;
-    });
-  }
-
-  setUser() {
-    const user = JSON.parse(this.localStorage.getItem("current-user"));
-    if (user) {
-      this.menu.querySelector(".user").innerText = `${user.name}#${user.shortId}`;
+  private setVersion(): void {
+    const verElements = this.menu.querySelectorAll(".ver");
+    for (let i = 0; i < verElements.length; i++) {
+      verElements[i].textContent = `v${version}`;
     }
   }
 
-  setKeybind() {
-    this.menu.querySelector(
+  private setUser(): void {
+    const user = JSON.parse(this.localStorage.getItem("current-user") || "null");
+    if (user) {
+      (this.menu.querySelector(".user") as HTMLElement).textContent = `${user.name}#${user.shortId}`;
+    }
+  }
+
+  private setKeybind(): void {
+    (this.menu.querySelector(
       ".keybind"
-    ).innerText = `Press ${this.settings.menu_keybind} to toggle menu`;
+    ) as HTMLElement).textContent = `Press ${this.settings.menu_keybind} to toggle menu`;
     if (!this.localStorage.getItem("juice-menu")) {
       this.localStorage.setItem(
         "juice-menu",
-        this.menuToggle.getAttribute("data-active")
+        this.menuToggle.getAttribute("data-active")!
       );
     } else {
       this.menuToggle.setAttribute(
         "data-active",
-        this.localStorage.getItem("juice-menu")
+        this.localStorage.getItem("juice-menu")!
       );
     }
   }
 
-  setTheme() {
+  private setTheme(): void {
     this.menu
-      .querySelector(".menu")
+      .querySelector(".menu")!
       .setAttribute("data-theme", this.settings.menu_theme);
   }
 
-  handleKeyEvents() {
+  private handleKeyEvents(): void {
     document.addEventListener("keydown", (e) => {
       if (e.code === this.settings.menu_keybind) {
         const isActive = this.menuToggle.getAttribute("data-active") === "true";
         if (!isActive) {
           document.exitPointerLock();
         }
-        this.menuToggle.setAttribute("data-active", !isActive);
-        this.localStorage.setItem("juice-menu", !isActive);
+        this.menuToggle.setAttribute("data-active", String(!isActive));
+        this.localStorage.setItem("juice-menu", String(!isActive));
       }
     });
   }
 
-  initMenu() {
-    const inputs = this.menu.querySelectorAll("input[data-setting]");
-    const textareas = this.menu.querySelectorAll("textarea[data-setting]");
-    const selects = this.menu.querySelectorAll("select[data-setting]");
-    inputs.forEach((input) => {
-      const setting = input.dataset.setting;
+  private initMenu(): void {
+    const inputs = this.menu.querySelectorAll<HTMLInputElement>("input[data-setting]");
+    const textareas = this.menu.querySelectorAll<HTMLTextAreaElement>("textarea[data-setting]");
+    const selects = this.menu.querySelectorAll<HTMLSelectElement>("select[data-setting]");
+
+    for (let i = 0; i < inputs.length; i++) {
+      const input = inputs[i];
+      const setting = input.dataset.setting!;
       const type = input.type;
       const value = this.settings[setting];
       if (type === "checkbox") {
@@ -125,29 +137,31 @@ class Menu {
       } else {
         input.value = value;
       }
-    });
+    }
 
-    selects.forEach((select) => {
-      const setting = select.dataset.setting;
+    for (let i = 0; i < selects.length; i++) {
+      const select = selects[i];
+      const setting = select.dataset.setting!;
       const value = this.settings[setting];
       select.value = value;
-    });
+    }
 
-    textareas.forEach((textarea) => {
-      const setting = textarea.dataset.setting;
+    for (let i = 0; i < textareas.length; i++) {
+      const textarea = textareas[i];
+      const setting = textarea.dataset.setting!;
       const value = this.settings[setting];
       textarea.value = value;
-    });
+    }
   }
 
-  handleMenuKeybindChange() {
-    const changeKeybindButton = this.menu.querySelector(".change-keybind");
-    changeKeybindButton.innerText = this.settings.menu_keybind;
+  private handleMenuKeybindChange(): void {
+    const changeKeybindButton = this.menu.querySelector(".change-keybind") as HTMLElement;
+    changeKeybindButton.textContent = this.settings.menu_keybind;
     changeKeybindButton.addEventListener("click", () => {
-      changeKeybindButton.innerText = "Press any key";
-      const listener = (e) => {
+      changeKeybindButton.textContent = "Press any key";
+      const listener = (e: KeyboardEvent) => {
         this.settings.menu_keybind = e.code;
-        changeKeybindButton.innerText = e.code;
+        changeKeybindButton.textContent = e.code;
         ipcRenderer.send("update-setting", "menu_keybind", e.code);
 
         const event = new CustomEvent("juice-settings-changed", {
@@ -155,19 +169,19 @@ class Menu {
         });
         document.dispatchEvent(event);
 
-        this.menu.querySelector(
+        (this.menu.querySelector(
           ".keybind"
-        ).innerText = `Press ${this.settings.menu_keybind} to toggle menu`;
+        ) as HTMLElement).textContent = `Press ${this.settings.menu_keybind} to toggle menu`;
         document.removeEventListener("keydown", listener);
       };
       document.addEventListener("keydown", listener);
     });
   }
 
-  handleMenuInputChange(input) {
-    const setting = input.dataset.setting;
-    const type = input.type;
-    const value = type === "checkbox" ? input.checked : input.value;
+  private handleMenuInputChange(input: HTMLInputElement | HTMLTextAreaElement): void {
+    const setting = input.dataset.setting!;
+    const type = (input as HTMLInputElement).type;
+    const value = type === "checkbox" ? (input as HTMLInputElement).checked : input.value;
     this.settings[setting] = value;
     ipcRenderer.send("update-setting", setting, value);
     const event = new CustomEvent("juice-settings-changed", {
@@ -176,22 +190,24 @@ class Menu {
     document.dispatchEvent(event);
   }
 
-  handleMenuInputChanges() {
-    const inputs = this.menu.querySelectorAll("input[data-setting]");
-    const textareas = this.menu.querySelectorAll("textarea[data-setting]");
-    inputs.forEach((input) => {
+  private handleMenuInputChanges(): void {
+    const inputs = this.menu.querySelectorAll<HTMLInputElement>("input[data-setting]");
+    const textareas = this.menu.querySelectorAll<HTMLTextAreaElement>("textarea[data-setting]");
+    for (let i = 0; i < inputs.length; i++) {
+      const input = inputs[i];
       input.addEventListener("change", () => this.handleMenuInputChange(input));
-    });
+    }
 
-    textareas.forEach((textarea) => {
+    for (let i = 0; i < textareas.length; i++) {
+      const textarea = textareas[i];
       textarea.addEventListener("change", () =>
         this.handleMenuInputChange(textarea)
       );
-    });
+    }
   }
 
-  handleMenuSelectChange(select) {
-    const setting = select.dataset.setting;
+  private handleMenuSelectChange(select: HTMLSelectElement): void {
+    const setting = select.dataset.setting!;
     const value = select.value;
     this.settings[setting] = value;
     ipcRenderer.send("update-setting", setting, value);
@@ -204,92 +220,99 @@ class Menu {
     document.dispatchEvent(event);
   }
 
-  handleMenuSelectChanges() {
-    const selects = this.menu.querySelectorAll("select[data-setting]");
-    selects.forEach((select) => {
+  private handleMenuSelectChanges(): void {
+    const selects = this.menu.querySelectorAll<HTMLSelectElement>("select[data-setting]");
+    for (let i = 0; i < selects.length; i++) {
+      const select = selects[i];
       select.addEventListener("change", () =>
         this.handleMenuSelectChange(select)
       );
-    });
+    }
   }
 
-  handleTabChanges() {
-    const tabs = this.menu.querySelectorAll(".juice.tab");
-    tabs.forEach((tab) => {
+  private handleTabChanges(): void {
+    const tabs = this.menu.querySelectorAll<HTMLElement>(".juice.tab");
+    for (let i = 0; i < tabs.length; i++) {
+      const tab = tabs[i];
       tab.addEventListener("click", () => this.handleTabChange(tab));
-    });
+    }
   }
 
-  handleTabChange(tab) {
+  private handleTabChange(tab: HTMLElement): void {
     const tabs = this.menu.querySelectorAll(".juice.tab");
-    const tabName = tab.dataset.tab;
+    const tabName = tab.dataset.tab!;
 
     this.localStorage.setItem("juice-menu-tab", tabName);
 
     const contents = this.menu.querySelectorAll(".juice.options");
-    tabs.forEach((tab) => {
-      tab.classList.remove("active");
-    });
-    contents.forEach((content) => {
-      content.classList.remove("active");
-    });
+    for (let i = 0; i < tabs.length; i++) {
+      tabs[i].classList.remove("active");
+    }
+    for (let i = 0; i < contents.length; i++) {
+      contents[i].classList.remove("active");
+    }
     tab.classList.add("active");
-    this.tabToContentMap[tab.dataset.tab].classList.add("active");
+    this.tabToContentMap[tab.dataset.tab!].classList.add("active");
   }
 
-  handleDropdowns() {
+  private handleDropdowns(): void {
     const dropdowns = this.menu.querySelectorAll(".dropdown");
-    dropdowns.forEach((dropdown) => {
-      const dropdownTop = dropdown.querySelector(".dropdown .top");
+    for (let i = 0; i < dropdowns.length; i++) {
+      const dropdown = dropdowns[i];
+      const dropdownTop = dropdown.querySelector(".dropdown .top") as HTMLElement;
       dropdownTop.addEventListener("click", () => {
         dropdown.classList.toggle("active");
       });
-    });
+    }
   }
 
-  handleSearch() {
-    const searchInput = this.menu.querySelector(".juice.search");
-    const settings = this.menu.querySelectorAll(".option:not(.custom)");
+  private handleSearch(): void {
+    const searchInput = this.menu.querySelector(".juice.search") as HTMLInputElement;
+    const settings = this.menu.querySelectorAll<HTMLElement>(".option:not(.custom)");
     searchInput.addEventListener("input", () => {
       const searchValue = searchInput.value.toLowerCase();
-      settings.forEach((setting) => {
-        setting.style.display = setting.textContent
+      for (let i = 0; i < settings.length; i++) {
+        const setting = settings[i];
+        setting.style.display = setting.textContent!
           .toLowerCase()
           .includes(searchValue)
           ? "flex"
           : "none";
 
-        const parent = setting.parentElement;
+        const parent = setting.parentElement as HTMLElement;
         if (parent.classList.contains("option-group")) {
           const children = parent.children;
-          const visibleChildren = Array.from(children).filter(
-            (child) => child.style.display === "flex"
-          );
-          parent.style.display = visibleChildren.length ? "flex" : "none";
+          let visibleCount = 0;
+          for (let j = 0; j < children.length; j++) {
+            if ((children[j] as HTMLElement).style.display === "flex") {
+              visibleCount++;
+            }
+          }
+          parent.style.display = visibleCount ? "flex" : "none";
         }
-      });
+      }
     });
   }
 
-  handleButtons() {
-    const openSwapperFolder = this.menu.querySelector("#open-swapper-folder");
+  private handleButtons(): void {
+    const openSwapperFolder = this.menu.querySelector("#open-swapper-folder") as HTMLElement;
     openSwapperFolder.addEventListener("click", () => {
       ipcRenderer.send("open-swapper-folder");
     });
 
-    const openScriptsFolder = this.menu.querySelector("#open-scripts-folder");
+    const openScriptsFolder = this.menu.querySelector("#open-scripts-folder") as HTMLElement;
     openScriptsFolder.addEventListener("click", () => {
       ipcRenderer.send("open-scripts-folder");
     });
 
-    const importSettings = this.menu.querySelector("#import-settings");
+    const importSettings = this.menu.querySelector("#import-settings") as HTMLElement;
     importSettings.addEventListener("click", () => {
       const modal = this.createModal(
         "Import settings",
         "Paste your settings here to import them"
       );
 
-      const bottom = modal.querySelector(".bottom");
+      const bottom = modal.querySelector(".bottom")!;
 
       const input = document.createElement("input");
       input.type = "text";
@@ -297,14 +320,16 @@ class Menu {
       bottom.appendChild(input);
 
       const confirm = document.createElement("button");
-      confirm.innerText = "Confirm";
+      confirm.textContent = "Confirm";
       confirm.classList.add("juice-button");
       confirm.addEventListener("click", () => {
         try {
           if (!input.value) return;
 
           const settings = JSON.parse(input.value);
-          for (const key in settings) {
+          const settingsKeys = Object.keys(settings);
+          for (let i = 0; i < settingsKeys.length; i++) {
+            const key = settingsKeys[i];
             this.settings[key] = settings[key];
             ipcRenderer.send("update-setting", key, settings[key]);
 
@@ -323,24 +348,24 @@ class Menu {
 
       bottom.appendChild(confirm);
 
-      this.menu.querySelector(".menu").appendChild(modal);
+      this.menu.querySelector(".menu")!.appendChild(modal);
     });
 
-    const exportSettings = this.menu.querySelector("#export-settings");
+    const exportSettings = this.menu.querySelector("#export-settings") as HTMLElement;
     exportSettings.addEventListener("click", () => {
       const modal = this.createModal(
         "Export settings",
         "Copy your settings here to export them"
       );
 
-      const bottom = modal.querySelector(".bottom");
+      const bottom = modal.querySelector(".bottom")!;
 
       const textarea = document.createElement("textarea");
       textarea.value = JSON.stringify(this.settings, null, 2);
       bottom.appendChild(textarea);
 
       const copy = document.createElement("button");
-      copy.innerText = "Copy";
+      copy.textContent = "Copy";
       copy.classList.add("juice-button");
       copy.addEventListener("click", () => {
         navigator.clipboard.writeText(textarea.value);
@@ -348,20 +373,20 @@ class Menu {
 
       bottom.appendChild(copy);
 
-      this.menu.querySelector(".menu").appendChild(modal);
+      this.menu.querySelector(".menu")!.appendChild(modal);
     });
 
     let clickCounter = 0;
-    const resetJuiceSettings = this.menu.querySelector("#reset-juice-settings");
+    const resetJuiceSettings = this.menu.querySelector("#reset-juice-settings") as HTMLElement;
     resetJuiceSettings.addEventListener("click", () => {
       clickCounter++;
       if (clickCounter === 1) {
         resetJuiceSettings.style.background = "rgba(var(--red), 0.25)";
-        const text = resetJuiceSettings.querySelector(".text");
-        text.innerText = "Are you sure?";
+        const text = resetJuiceSettings.querySelector(".text") as HTMLElement;
+        text.textContent = "Are you sure?";
 
-        const description = resetJuiceSettings.querySelector(".description");
-        description.innerText =
+        const description = resetJuiceSettings.querySelector(".description") as HTMLElement;
+        description.textContent =
           "This will restart the client and reset all settings. Click again to confirm";
       } else if (clickCounter === 2) {
         ipcRenderer.send("reset-juice-settings");
@@ -370,7 +395,7 @@ class Menu {
 
     const remoteToStaticLinks = this.menu.querySelector(
       "#remote-to-static-links"
-    );
+    ) as HTMLElement;
     remoteToStaticLinks.addEventListener("click", async () => {
       const localStorageKeys = [
         "SETTINGS___SETTING/CROSSHAIR___SETTING/STATIC_URL___SETTING",
@@ -386,7 +411,7 @@ class Menu {
 
       const juiceKeys = ["css_link", "hitmarker_link", "killicon_link"];
 
-      const encodeImage = async (url) => {
+      const encodeImage = async (url: string): Promise<string> => {
         if (!url || url === "") return "";
 
         try {
@@ -396,21 +421,24 @@ class Menu {
           const blob = await response.blob();
           return new Promise((resolve) => {
             const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
+            reader.onloadend = () => resolve(reader.result as string);
             reader.readAsDataURL(blob);
           });
         } catch (error) {
           console.error(`Error fetching or converting ${url}:`, error);
+          return "";
         }
       };
 
-      for (const key of localStorageKeys) {
-        const url = localStorage.getItem(key).replace(/"/g, "");
+      for (let i = 0; i < localStorageKeys.length; i++) {
+        const key = localStorageKeys[i];
+        const url = localStorage.getItem(key)?.replace(/"/g, "") || "";
         const data = await encodeImage(url);
         localStorage.setItem(key, data);
       }
 
-      for (const key of juiceKeys) {
+      for (let i = 0; i < juiceKeys.length; i++) {
+        const key = juiceKeys[i];
         const url = this.settings[key];
         const data = await encodeImage(url);
         this.settings[key] = data;
@@ -426,7 +454,7 @@ class Menu {
     });
   }
 
-  createModal(title, description) {
+  private createModal(title: string, description: string): HTMLDivElement {
     const modal = document.createElement("div");
     modal.id = "modal";
 
@@ -444,15 +472,15 @@ class Menu {
     </div>
     `;
 
-    const close = modal.querySelector(".close");
+    const close = modal.querySelector(".close") as HTMLElement;
     close.addEventListener("click", () => modal.remove());
 
     modal.addEventListener("click", (e) => {
-      if (e.target.id === "modal") modal.remove();
+      if ((e.target as HTMLElement).id === "modal") modal.remove();
     });
 
-    return modal;
+    return modal as HTMLDivElement;
   }
 }
 
-module.exports = Menu;
+export default Menu;

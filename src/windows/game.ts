@@ -1,18 +1,19 @@
-const { BrowserWindow, ipcMain, app, shell } = require("electron");
-const { default_settings, allowed_urls } = require("../util/defaults.json");
-const { registerShortcuts } = require("../util/shortcuts");
-const { applySwitches } = require("../util/switches");
-const DiscordRPC = require("../addons/rpc");
-const path = require("path");
-const Store = require("electron-store");
-const fs = require("fs");
+import { BrowserWindow, ipcMain, app, shell } from "electron";
+import { default_settings, allowed_urls } from "../util/defaults.json";
+import { registerShortcuts } from "../util/shortcuts";
+import { applySwitches } from "../util/switches";
+import DiscordRPC from "../addons/rpc";
+import * as path from "path";
+import Store from "electron-store";
+import * as fs from "fs";
+import type { Settings } from '../types';
 
 const store = new Store();
 if (!store.has("settings")) {
   store.set("settings", default_settings);
 }
 
-const settings = store.get("settings");
+const settings = store.get("settings") as Settings;
 
 for (const key in default_settings) {
   if (
@@ -33,7 +34,7 @@ ipcMain.on("get-settings", (e) => {
   e.returnValue = settings;
 });
 
-ipcMain.on("update-setting", (e, key, value) => {
+ipcMain.on("update-setting", (e, key: string, value: any) => {
   settings[key] = value;
   store.set("settings", settings);
 });
@@ -72,11 +73,11 @@ ipcMain.on("reset-juice-settings", () => {
   app.quit();
 });
 
-let gameWindow;
+let gameWindow: BrowserWindow & { DiscordRPC?: DiscordRPC } | null;
 
 applySwitches(settings);
 
-const createWindow = () => {
+const createWindow = (): void => {
   gameWindow = new BrowserWindow({
     fullscreen: settings.auto_fullscreen,
     icon: path.join(__dirname, "../assets/img/icon.png"),
@@ -93,21 +94,23 @@ const createWindow = () => {
     },
   });
 
-  gameWindow.once("ready-to-show", async ()=> {
+  gameWindow.once("ready-to-show", async () => {
     if (process.platform === "win32") {
-      const { default: enject } = await import("@juice-client/node-enject")
+      const { default: enject } = await import("@juice-client/node-enject");
 
-      const handleBuffer = gameWindow.getNativeWindowHandle()
-      let hwnd
+      const handleBuffer = gameWindow!.getNativeWindowHandle();
+      let hwnd: number;
 
-      if (process.arch === "x64" || process.arch === "arm64") hwnd = Number(handleBuffer.readBigUInt64LE(0))
-      else hwnd = handleBuffer.readUInt32LE(0)
+      if (process.arch === "x64" || process.arch === "arm64")
+        hwnd = Number(handleBuffer.readBigUInt64LE(0));
+      else
+        hwnd = handleBuffer.readUInt32LE(0);
 
-      enject.startHook(hwnd)
-  }
+      enject.startHook(hwnd);
+    }
 
-  gameWindow.show()
-  })
+    gameWindow!.show();
+  });
 
   const scriptsPath = path.join(
     app.getPath("documents"),
@@ -128,11 +131,11 @@ const createWindow = () => {
   });
 
   gameWindow.webContents.on("did-navigate-in-page", (e, url) => {
-    gameWindow.webContents.send("url-change", url);
+    gameWindow!.webContents.send("url-change", url);
 
-    if (settings.discord_rpc && gameWindow.DiscordRPC) {
+    if (settings.discord_rpc && gameWindow!.DiscordRPC) {
       const base_url = settings.base_url;
-      const stateMap = {
+      const stateMap: { [key: string]: string } = {
         [`${base_url}`]: "In the lobby",
         [`${base_url}hub/leaderboard`]: "Viewing the leaderboard",
         [`${base_url}hub/clans/champions-league`]:
@@ -151,7 +154,7 @@ const createWindow = () => {
         [`${base_url}inventory`]: "Viewing their inventory",
       };
 
-      let state;
+      let state: string;
 
       if (stateMap[url]) {
         state = stateMap[url];
@@ -163,7 +166,7 @@ const createWindow = () => {
         state = "In the lobby";
       }
 
-      gameWindow.DiscordRPC.setState(state);
+      gameWindow!.DiscordRPC.setState(state);
     }
   });
 
@@ -175,7 +178,7 @@ const createWindow = () => {
   gameWindow.maximize();
 
   gameWindow.once("ready-to-show", () => {
-    gameWindow.show();
+    gameWindow!.show();
   });
 
   registerShortcuts(gameWindow);
@@ -189,13 +192,9 @@ const createWindow = () => {
   });
 };
 
-const initGame = () => {
+export const initGame = (): void => {
   createWindow();
   if (settings.discord_rpc) {
-    gameWindow.DiscordRPC = new DiscordRPC();
+    gameWindow!.DiscordRPC = new DiscordRPC();
   }
-};
-
-module.exports = {
-  initGame,
 };

@@ -14,6 +14,8 @@
     "rave_mode": false,
     "customizations": true,
     "unlimited_fps": false,
+    "capped_fps": false,
+    "capped_fps_number": 60,
     "auto_fullscreen": true,
     "discord_rpc": true,
     "css_link": "",

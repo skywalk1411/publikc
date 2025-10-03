@@ -69,30 +69,6 @@
     filter: invert(1);
 }
 
-.menu[data-theme="nameless"] {
-    font-family: "Forza", sans-serif;
-    font-weight: 400;
-    --dark: 28, 27, 34;
-    --light: 255, 255, 255;
-    --orange: 245, 200, 97;
-    --green: 180, 236, 121;
-    --blue: 97, 141, 245;
-    --red: 244, 91, 91;
-    --hover-dark: 34, 34, 43;
-    --hover-light: 255, 255, 255, 0.05;
-    --border: 255, 255, 255, 0.15;
-    --border-active: 255, 255, 255, 0.25;
-    --shadow: 0, 0, 0, 0.5;
-    --opacity-half: 255, 255, 255, 0.5;
-    --opacity-quarter: 255, 255, 255, 0.25;
-}
-
-.menu[data-theme="nameless"] input[type="text"],
-.menu[data-theme="nameless"] textarea,
-.menu[data-theme="nameless"] select {
-    font-family: "Forza", sans-serif !important;
-}
-
 .menu[data-theme="kirka-arena"] {
     background: linear-gradient(to bottom left, rgb(0, 141, 0), rgb(19, 51, 1));
     --dark: 8, 96, 4;

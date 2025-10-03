@@ -1,11 +1,15 @@
 {
   "name": "publikc",
-  "version": "1.1.19",
+  "version": "1.2.0",
   "description": "Electron client for Kirka.io",
-  "main": "src/main.js",
+  "main": "dist/main.js",
   "scripts": {
-    "start": "electron .",
-    "build": "electron-builder"
+    "start": "npm run compile && electron .",
+    "compile": "tsc && npm run copy-assets",
+    "compile:prod": "tsc && npm run copy-assets && node scripts/minify.js",
+    "copy-assets": "copyfiles -u 1 \"src/assets/**/*\" dist/ && copyfiles -u 1 \"src/util/defaults.json\" dist/",
+    "build": "npm run compile:prod && electron-builder",
+    "dev": "npm run compile && electron ."
   },
   "repository": {
     "type": "git",
@@ -15,8 +19,14 @@
   "author": "skywalk, irrvlo",
   "license": "ISC",
   "devDependencies": {
+    "@types/electron": "^1.4.38",
+    "@types/node": "^24.6.2",
+    "copyfiles": "^2.4.1",
     "electron": "^10.4.7",
-    "electron-builder": "^23.0.2"
+    "electron-builder": "^23.0.2",
+    "terser": "^5.44.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "discord-rpc": "^4.0.1",
@@ -26,7 +36,7 @@
     "v8-compile-cache": "^2.4.0"
   },
   "optionalDependencies": {
-    "dmg-license": "^1.0.11",
-    "@juice-client/node-enject": "^1.0.3"
+    "@juice-client/node-enject": "^1.0.3",
+    "dmg-license": "^1.0.11"
   }
 }

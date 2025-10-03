@@ -1,23 +1,49 @@
-const Menu = require("./menu");
-const { opener } = require("../addons/opener");
-const { customReqScripts } = require("../addons/customReqScripts");
-const { ipcRenderer } = require("electron");
-const fs = require("fs");
-const path = require("path");
+import Menu from "./menu";
+import { opener } from "../addons/opener";
+import { customReqScripts } from "../addons/customReqScripts";
+import { ipcRenderer } from "electron";
+import * as fs from "fs";
+import * as path from "path";
+import type { Settings, NewsItem, UserCustomization, User, NotificationData, SettingsChangedEvent, MapImages } from '../types';
 
-const scriptsPath = ipcRenderer.sendSync("get-scripts-path");
-const scripts = fs.readdirSync(scriptsPath);
+const scriptsPath: string = ipcRenderer.sendSync("get-scripts-path");
+const scripts: string[] = fs.readdirSync(scriptsPath);
 
-const settings = ipcRenderer.sendSync("get-settings");
-const base_url = settings.base_url;
+const settings: Settings = ipcRenderer.sendSync("get-settings");
+const base_url: string = settings.base_url;
+
+const cleanupTasks: (() => void)[] = [];
+const addCleanupTask = (task: () => void): void => {
+  cleanupTasks.push(task);
+};
+const runCleanup = (): void => {
+  cleanupTasks.forEach(fn => {
+    try {
+      fn();
+    } catch (error) {
+      console.error("Cleanup error:", error);
+    }
+  });
+  cleanupTasks.length = 0;
+};
+
+let customizationsMap = new Map<string, UserCustomization>();
+const updateCustomizationsMap = (customizations: UserCustomization[]): void => {
+  customizationsMap.clear();
+  if (customizations && Array.isArray(customizations)) {
+    for (let i = 0; i < customizations.length; i++) {
+      customizationsMap.set(customizations[i].shortId, customizations[i]);
+    }
+  }
+};
 
 if (!window.location.href.startsWith(base_url)) {
-  delete window.process;
-  delete window.require;
-  return;
+  (window as any).process = undefined;
+  (window as any).require = undefined;
 } else {
-  scripts.forEach((script) => {
-    if (!script.endsWith(".js")) return;
+  for (let i = 0; i < scripts.length; i++) {
+    const script = scripts[i];
+    if (!script.endsWith(".js")) continue;
     const scriptPath = path.join(scriptsPath, script);
     try {
       require(scriptPath);
@@ -25,7 +51,7 @@ if (!window.location.href.startsWith(base_url)) {
     catch (error) {
       console.error(`Error loading script ${script}:`, error);
     }
-  });
+  }
 }
 
 const originalConsole = {
@@ -42,14 +68,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   console.error = originalConsole.error;
   console.info = originalConsole.info;
   console.trace = originalConsole.trace;
-  
+
   const menu = new Menu();
   menu.init();
 
   opener();
   customReqScripts(settings);
 
-  const fetchAll = async () => {
+  const fetchAll = async (): Promise<void> => {
     const [customizations, user] = await Promise.all([
       fetch("https://kirka.lukeskywalk.com/static/customizations.json").then((r) =>
         r.json()
@@ -69,15 +95,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       "current-user",
       JSON.stringify(user.statusCode === 401 ? "" : user)
     );
+
+    updateCustomizationsMap(customizations);
   };
   fetchAll();
 
-  const formatLink = (link) => link.replace(/\\/g, "/");
+  const formatLink = (link: string): string => link.replace(/\\/g, "/");
 
-  const lobbyKeybindReminder = (settings) => {
+  const lobbyKeybindReminder = (settings: Settings): void => {
     const keybindReminder = document.createElement("span");
     keybindReminder.id = "juice-keybind-reminder";
-    keybindReminder.style = `position: absolute; left: 147px; bottom: 10px; font-size: 0.9rem; color: #fff; width: max-content`;
+    keybindReminder.style.cssText = `position: absolute; left: 147px; bottom: 10px; font-size: 0.9rem; color: #fff; width: max-content`;
 
     keybindReminder.innerText = `Press ${settings.menu_keybind} to open the client menu.`;
 
@@ -87,19 +115,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     )
       return;
 
-    document.querySelector("#app #left-icons").appendChild(keybindReminder);
-    document.addEventListener("juice-settings-changed", ({ detail }) => {
-      if (detail.setting === "menu_keybind") {
+    const leftIcons = document.querySelector("#app #left-icons");
+    if (leftIcons) {
+      leftIcons.appendChild(keybindReminder);
+    }
+
+    const settingsChangedHandler = (event: Event): void => {
+      const customEvent = event as SettingsChangedEvent;
+      if (customEvent.detail.setting === "menu_keybind") {
         const keybindReminder = document.querySelector(
           "#juice-keybind-reminder"
         );
         if (keybindReminder)
-          keybindReminder.innerText = `Press ${detail.value} to open the client menu.`;
+          keybindReminder.textContent = `Press ${customEvent.detail.value} to open the client menu.`;
       }
-    });
+    };
+    document.addEventListener("juice-settings-changed", settingsChangedHandler);
+    addCleanupTask(() => document.removeEventListener("juice-settings-changed", settingsChangedHandler));
   };
 
-  const lobbyNews = async (settings) => {
+  const lobbyNews = async (settings: Settings): Promise<void> => {
     if (
       !document.querySelector("#app > .interface") ||
       document.querySelector(".lobby-news")
@@ -110,25 +145,30 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!general_news && !promotional_news && !event_news && !alert_news)
       return;
 
-    let news = await fetch("https://kirka.lukeskywalk.com/static/news.json").then((r) =>
+    let news: NewsItem[] = await fetch("https://kirka.lukeskywalk.com/static/news.json").then((r) =>
       r.json()
     );
     if (!news.length) return;
 
-    news = news.filter(({ category }) => {
-      const categories = {
+    const filteredNews: NewsItem[] = [];
+    for (let i = 0; i < news.length; i++) {
+      const { category } = news[i];
+      const categories: Record<string, boolean> = {
         general: general_news,
         promotional: promotional_news,
         event: event_news,
         alert: alert_news,
       };
-      return categories[category];
-    });
+      if (categories[category]) {
+        filteredNews.push(news[i]);
+      }
+    }
+    news = filteredNews;
 
     const lobbyNewsContainer = document.createElement("div");
     lobbyNewsContainer.id = "lobby-news";
     lobbyNewsContainer.className = "lobby-news";
-    lobbyNewsContainer.style = `
+    lobbyNewsContainer.style.cssText = `
       width: 250px;
       position: absolute;
       display: flex;
@@ -138,14 +178,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       left: 148px;
       pointer-events: auto;
     `;
-    document
-      .querySelector("#app #left-interface")
-      .appendChild(lobbyNewsContainer);
+    const leftInterface = document.querySelector("#app #left-interface");
+    if (leftInterface) {
+      leftInterface.appendChild(lobbyNewsContainer);
+    }
 
-    const createNewsCard = (newsItem) => {
+    const createNewsCard = (newsItem: NewsItem): void => {
       const div = document.createElement("div");
       div.className = "news-card";
-      div.style = `
+      div.style.cssText = `
         width: 100%;
         border: 4px solid #3e4d7c;
         border-bottom: solid 4px #26335b;
@@ -158,11 +199,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       `;
       lobbyNewsContainer.appendChild(div);
 
-      const addImage = () => {
+      const addImage = (): void => {
         const img = document.createElement("img");
         img.className = `news-img ${newsItem.imgType}`;
         img.src = newsItem.img;
-        img.style = `
+        img.style.cssText = `
           width: ${newsItem.imgType === "banner" ? "100%" : "4rem"};
           max-height: ${newsItem.imgType === "banner" ? "7.5rem" : "4rem"};
           object-fit: cover;
@@ -171,11 +212,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         div.appendChild(img);
       };
 
-      const addBadge = (text, color) => {
+      const addBadge = (text: string, color: string): void => {
         const badgeSpan = document.createElement("span");
         badgeSpan.className = "badge";
         badgeSpan.innerText = text;
-        badgeSpan.style = `
+        badgeSpan.style.cssText = `
           position: absolute;
           top: 0;
           right: 0;
@@ -189,10 +230,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         div.appendChild(badgeSpan);
       };
 
-      const addContent = () => {
+      const addContent = (): void => {
         const content = document.createElement("div");
         content.className = "news-container";
-        content.style = `
+        content.style.cssText = `
           padding: 0.5rem;
           display: flex;
           flex-direction: column;
@@ -203,7 +244,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const title = document.createElement("span");
         title.className = "news-title";
         title.innerText = newsItem.title;
-        title.style = `
+        title.style.cssText = `
           font-size: 1.2rem;
           font-weight: 600;
           color: #fff;
@@ -215,7 +256,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const text = document.createElement("span");
         text.className = "news-content";
         text.innerText = newsItem.content;
-        text.style = `
+        text.style.cssText = `
           font-size: 0.9rem;
           color: #fff;
           margin: 0;
@@ -248,25 +289,31 @@ document.addEventListener("DOMContentLoaded", async () => {
       };
     };
 
-    news.forEach((newsItem) => createNewsCard(newsItem));
+    for (let i = 0; i < news.length; i++) {
+      createNewsCard(news[i]);
+    }
   };
 
-  const juiceDiscordButton = () => {
-    const btn = document.querySelectorAll(".card-cont.soc-group")[1];
+  const juiceDiscordButton = (): void => {
+    const btns = document.querySelectorAll(".card-cont.soc-group");
+    const btn = btns[1] as HTMLElement;
     if (!btn || document.querySelector("#juice-discord-btn")) return;
 
-    const discordBtn = btn.cloneNode(true);
+    const discordBtn = btn.cloneNode(true) as HTMLElement;
     discordBtn.className =
       "card-cont soc-group transfer-list-top-enter transfer-list-top-enter-active";
     discordBtn.id = "juice-discord-btn";
-    discordBtn.style = `
+    discordBtn.style.cssText = `
     background:linear-gradient(to top,rgba(230,73,0,.75),rgba(97,6,2,.75)) !important;
     border-bottom-color:#4d0401 !important;
     border-top-color:#ff6a2e !important;
     border-right-color:#b43812 !important;`;
-    const textDivs = discordBtn.querySelector(".text-soc").children;
-    textDivs[0].innerText = "PUBLIKC";
-    textDivs[1].innerText = "DISCORD";
+    const textSoc = discordBtn.querySelector(".text-soc");
+    if (textSoc) {
+      const textDivs = textSoc.children;
+      if (textDivs[0]) textDivs[0].textContent = "PUBLIKC";
+      if (textDivs[1]) textDivs[1].textContent = "DISCORD";
+    }
 
     const i = document.createElement("i");
     i.className = "fab fa-discord";
@@ -274,7 +321,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     i.style.fontFamily = "Font Awesome 6 Brands";
     i.style.margin = "3.2px 1.6px 0 1.6px";
     i.style.textShadow = "0 0 0 transparent";
-    discordBtn.querySelector("svg").replaceWith(i);
+    const svg = discordBtn.querySelector("svg");
+    if (svg) {
+      svg.replaceWith(i);
+    }
 
     discordBtn.onclick = () => {
       window.open("https://discord.gg/jPgezmpNwm", "_blank");
@@ -282,12 +332,26 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     btn.replaceWith(discordBtn);
 
-    setInterval(() => {
+    let allowTransition = true;
+
+    const observer = new MutationObserver(() => {
+      if (allowTransition) return;
+
+      if (discordBtn && discordBtn.className !== "card-cont soc-group") {
+        discordBtn.className = "card-cont soc-group";
+      }
+    });
+
+    observer.observe(discordBtn, { attributes: true, attributeFilter: ["class"] });
+    addCleanupTask(() => observer.disconnect());
+
+    setTimeout(() => {
+      allowTransition = false;
       discordBtn.className = "card-cont soc-group";
-    }, 300);
+    }, 1000);
   };
 
-  const loadTheme = () => {
+  const loadTheme = (): void => {
     const addedStyles = document.createElement("style");
     addedStyles.id = "juice-styles-theme";
     document.head.appendChild(addedStyles);
@@ -296,7 +360,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     customStyles.id = "juice-styles-custom";
     document.head.appendChild(customStyles);
 
-    const updateTheme = () => {
+    const updateTheme = (): void => {
       const settings = ipcRenderer.sendSync("get-settings");
       const cssLink = settings.css_link;
       const advancedCSS = settings.advanced_css;
@@ -310,27 +374,30 @@ document.addEventListener("DOMContentLoaded", async () => {
       customStyles.innerHTML = advancedCSS;
     };
 
-    document.addEventListener("juice-settings-changed", (e) => {
+    const themeChangedHandler = (e: Event): void => {
+      const customEvent = e as SettingsChangedEvent;
       if (
-        e.detail.setting === "css_link" ||
-        e.detail.setting === "css_enabled" ||
-        e.detail.setting === "advanced_css"
+        customEvent.detail.setting === "css_link" ||
+        customEvent.detail.setting === "css_enabled" ||
+        customEvent.detail.setting === "advanced_css"
       ) {
         updateTheme();
       }
-    });
+    };
+    document.addEventListener("juice-settings-changed", themeChangedHandler);
+    addCleanupTask(() => document.removeEventListener("juice-settings-changed", themeChangedHandler));
 
     updateTheme();
   };
 
-  const applyUIFeatures = () => {
+  const applyUIFeatures = (): void => {
     const addedStyles = document.createElement("style");
     addedStyles.id = "juice-styles-ui-features";
     document.head.appendChild(addedStyles);
 
-    const updateUIFeatures = () => {
+    const updateUIFeatures = (): void => {
       const settings = ipcRenderer.sendSync("get-settings");
-      const styles = [];
+      const styles: string[] = [];
 
       if (settings.perm_crosshair)
         styles.push(
@@ -368,7 +435,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           )}) !important; }`
         );
       if (settings.killicon_link !== "")
-        styles.push(`.animate-cont::before { content: ""; 
+        styles.push(`.animate-cont::before { content: "";
       background: url(${formatLink(
           settings.killicon_link
         )}); width: 10rem; height: 10rem; margin-bottom: 2rem; display: inline-block; background-position: center; background-size: contain; background-repeat: no-repeat; }
@@ -387,7 +454,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       addedStyles.innerHTML = styles.join("");
     };
 
-    document.addEventListener("juice-settings-changed", (e) => {
+    const uiFeaturesChangedHandler = (e: Event): void => {
+      const customEvent = e as SettingsChangedEvent;
       const relevantSettings = [
         "perm_crosshair",
         "hide_chat",
@@ -400,34 +468,34 @@ document.addEventListener("DOMContentLoaded", async () => {
         "rave_mode",
         "lobby_keybind_reminder",
       ];
-      if (relevantSettings.includes(e.detail.setting)) updateUIFeatures();
-    });
+      if (relevantSettings.includes(customEvent.detail.setting)) updateUIFeatures();
+    };
+    document.addEventListener("juice-settings-changed", uiFeaturesChangedHandler);
+    addCleanupTask(() => document.removeEventListener("juice-settings-changed", uiFeaturesChangedHandler));
+
     updateUIFeatures();
   };
 
-  const handleLobby = () => {
+  const handleLobby = (): void => {
     const settings = ipcRenderer.sendSync("get-settings");
 
     lobbyKeybindReminder(settings);
     lobbyNews(settings);
     juiceDiscordButton();
 
-    const customizations = JSON.parse(
-      localStorage.getItem("juice-customizations")
-    );
-    const currentUser = JSON.parse(localStorage.getItem("current-user"));
+    const currentUser = JSON.parse(localStorage.getItem("current-user") || "{}");
 
-    const applyCustomizations = () => {
-      if (customizations?.find((c) => c.shortId === currentUser?.shortId)) {
-        const customs = customizations.find(
-          (c) => c.shortId === currentUser.shortId
-        );
+    const applyCustomizations = (): void => {
+      const customs = customizationsMap.get(currentUser?.shortId);
+      if (customs) {
         const lobbyNickname = document.querySelector(
           ".team-section .heads .nickname"
-        );
+        ) as HTMLElement;
+
+        if (!lobbyNickname) return;
 
         if (customs.gradient)
-          lobbyNickname.style = `
+          lobbyNickname.style.cssText = `
               display: flex; align-items: flex-end; gap: 0.25rem; overflow: unset !important;
               background: linear-gradient(${customs.gradient.rot
             }, ${customs.gradient.stops.join(", ")});
@@ -437,13 +505,13 @@ document.addEventListener("DOMContentLoaded", async () => {
             } !important;
           `;
         else
-          lobbyNickname.style =
+          lobbyNickname.style.cssText =
             "display: flex; align-items: flex-end; gap: 0.25rem; overflow: unset !important;";
 
         if (lobbyNickname.querySelector(".juice-badges")) return;
 
         const badgesElem = document.createElement("div");
-        badgesElem.style =
+        badgesElem.style.cssText =
           "display: flex; gap: 0.25rem; align-items: center; width: 0;";
         badgesElem.className = "juice-badges";
 
@@ -454,158 +522,196 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (customs.discord) {
           const linkedBadge = document.createElement("img");
           linkedBadge.src = "https://kirka.lukeskywalk.com/static/linked.png";
-          linkedBadge.style = badgeStyle;
+          linkedBadge.style.cssText = badgeStyle;
           badgesElem.appendChild(linkedBadge);
         }
 
         if (customs.booster) {
           const boosterBadge = document.createElement("img");
           boosterBadge.src = "https://kirka.lukeskywalk.com/static/booster.png";
-          boosterBadge.style = badgeStyle;
+          boosterBadge.style.cssText = badgeStyle;
           badgesElem.appendChild(boosterBadge);
         }
 
         if (customs.badges && customs.badges.length) {
-          customs.badges.forEach((badge) => {
+          for (let i = 0; i < customs.badges.length; i++) {
+            const badge = customs.badges[i];
             const img = document.createElement("img");
             img.src = badge;
-            img.style = badgeStyle;
+            img.style.cssText = badgeStyle;
             badgesElem.appendChild(img);
-          });
+          }
         }
       }
     };
 
-    const removeCustomizations = () => {
+    const removeCustomizations = (): void => {
       const lobbyNickname = document.querySelector(
         ".team-section .heads .nickname"
-      );
-      lobbyNickname.style =
+      ) as HTMLElement;
+      if (!lobbyNickname) return;
+      lobbyNickname.style.cssText =
         "display: flex; align-items: flex-end; gap: 0.25rem;";
       lobbyNickname.querySelector(".juice-badges")?.remove();
     };
 
     if (settings.customizations) applyCustomizations();
 
-    document.addEventListener("juice-settings-changed", ({ detail }) => {
-      if (detail.setting === "customizations")
-        detail.value ? applyCustomizations() : removeCustomizations();
-    });
+    const customizationsChangedHandler = (event: Event): void => {
+      const customEvent = event as SettingsChangedEvent;
+      if (customEvent.detail.setting === "customizations")
+        customEvent.detail.value ? applyCustomizations() : removeCustomizations();
+    };
+    document.addEventListener("juice-settings-changed", customizationsChangedHandler);
+    addCleanupTask(() => document.removeEventListener("juice-settings-changed", customizationsChangedHandler));
   };
 
-  const handleServers = async () => {
-    const mapImages = await fetch(
+  const handleServers = async (): Promise<void> => {
+    const mapImages: MapImages = await fetch(
       "https://raw.githubusercontent.com/SheriffCarry/KirkaSkins/main/maps/full_mapimages.json"
     ).then((res) => res.json());
 
-    Object.keys(mapImages).forEach((item) => {
+    const mapImageKeys = Object.keys(mapImages);
+    for (let i = 0; i < mapImageKeys.length; i++) {
+      const item = mapImageKeys[i];
       if (!mapImages[item].includes("https")) {
         mapImages[item] =
           "https://raw.githubusercontent.com/SheriffCarry/KirkaSkins/main" +
           mapImages[item];
       }
-    });
+    }
 
-    const replaceMapImages = () => {
+    const processedServers = new Set<Element>();
+
+    const replaceMapImages = (): void => {
       const servers = document.querySelectorAll(".server");
-      servers.forEach((server) => {
-        let mapName = server.querySelector(".map").innerText.split("_").pop();
+      for (let i = 0; i < servers.length; i++) {
+        const server = servers[i];
+        if (processedServers.has(server)) continue;
+
+        const serverEl = server as HTMLElement;
+        const mapEl = server.querySelector(".map");
+        if (!mapEl) continue;
+        let mapName = mapEl.textContent?.split("_").pop() || "";
         if (mapImages[mapName]) {
-          server.style.backgroundImage = `url(${mapImages[mapName]})`;
-          server.style.backgroundSize = "cover";
-          server.style.backgroundPosition = "center";
-        } else server.style.backgroundImage = "none";
-      });
+          serverEl.style.backgroundImage = `url(${mapImages[mapName]})`;
+          serverEl.style.backgroundSize = "cover";
+          serverEl.style.backgroundPosition = "center";
+        } else serverEl.style.backgroundImage = "none";
+
+        processedServers.add(server);
+      }
     };
+
     replaceMapImages();
 
-    let interval = setInterval(() => {
-      if (!window.location.href.startsWith(`${base_url}servers/`))
-        clearInterval(interval);
+    const observer = new MutationObserver(() => {
+      if (!window.location.href.startsWith(base_url + "servers/")) {
+        observer.disconnect();
+        return;
+      }
       replaceMapImages();
-    }, 250);
+    });
 
-    document.addEventListener("click", (e) => {
-      if (e.shiftKey && e.target.classList.contains("author-name"))
+    const serverList = document.querySelector(".servers-list") || document.body;
+    observer.observe(serverList, { childList: true, subtree: true });
+    addCleanupTask(() => observer.disconnect());
+
+    const clickHandler = (e: MouseEvent): void => {
+      const target = e.target as HTMLElement;
+      if (e.shiftKey && target.classList.contains("author-name"))
         setTimeout(() => {
           navigator.clipboard.readText().then((text) => {
             window.location.href = `${base_url}profile/${text.replace(
               "#",
               ""
             )}`;
-            const username = e.target.innerText.replace(":", "");
+            const username = target.textContent?.replace(":", "") || "";
             customNotification({
               message: `Loading ${username}${text}'s profile...`,
             });
           });
         }, 250);
-    });
+    };
+    document.addEventListener("click", clickHandler);
+    addCleanupTask(() => document.removeEventListener("click", clickHandler));
   };
 
-  const handleProfile = () => {
+  const handleProfile = (): void => {
     const settings = ipcRenderer.sendSync("get-settings");
 
-    const interval = setInterval(() => {
-      if (!window.location.href.startsWith(`${base_url}profile/`))
-        clearInterval(interval);
+    const processProfile = (): void => {
+      if (!window.location.href.startsWith(base_url + "profile/")) {
+        return;
+      }
 
       if (document.querySelector(".profile > .content")) {
-        clearInterval(interval);
 
         const profile = document.querySelector(
           ".content > .profile-cont > .profile"
-        );
-        const content = profile.querySelector(".profile > .content");
+        ) as HTMLElement;
+        const content = profile?.querySelector(".profile > .content") as HTMLElement;
         const statistics = document.querySelectorAll(".statistic");
-        const progressExp = document.querySelector(".progress-exp");
+        const progressExp = document.querySelector(".progress-exp") as HTMLElement;
 
-        profile.style = "width: unset; min-width: 60rem;";
-        profile.querySelector(".you").style = "width: 100%;";
-        content.style = "width: 36.5rem; flex-shrink: 0;";
+        if (!profile || !content) return;
+
+        profile.style.cssText = "width: unset; min-width: 60rem;";
+        const youEl = profile.querySelector(".you") as HTMLElement;
+        if (youEl) youEl.style.cssText = "width: 100%;";
+        content.style.cssText = "width: 36.5rem; flex-shrink: 0;";
 
         if (progressExp) {
-          const [current, max] = progressExp.innerText.split("/");
-          progressExp.innerText = `${parseInt(
+          const [current, max] = progressExp.textContent?.split("/") || ["0", "0"];
+          progressExp.textContent = `${parseInt(
             current
           ).toLocaleString()}/${parseInt(max).toLocaleString()}`;
         }
 
-        let kills;
-        let deaths;
+        let kills: string = "";
+        let deaths: string = "";
 
-        statistics.forEach((stat) => {
-          const name = stat.querySelector(".stat-name").innerText;
-          const value = stat.querySelector(".stat-value").innerText;
+        for (let i = 0; i < statistics.length; i++) {
+          const stat = statistics[i];
+          const nameEl = stat.querySelector(".stat-name");
+          const valueEl = stat.querySelector(".stat-value");
+          if (!nameEl || !valueEl) continue;
+          const name = nameEl.textContent || "";
+          const value = valueEl.textContent || "";
 
           if (name === "kills") kills = value;
           if (name === "deaths") deaths = value;
 
-          if (stat.innerText.includes(".")) return;
+          if (stat.textContent?.includes(".")) continue;
 
-          stat.querySelector(".stat-value").innerText = value.replace(
+          valueEl.textContent = value.replace(
             value.split(" ")[0],
             parseInt(value.split(" ")[0]).toLocaleString()
           );
-        });
+        }
 
-        content
-          .querySelectorAll(".top-medium > .top > .card")
-          .forEach((card) => {
-            if (card.classList.contains("progress")) return;
-            card.style.width = "unset";
-            if (card.classList.contains("k-d")) {
-              card.querySelector(".stat-value-kd").innerText = (
+        const cards = content.querySelectorAll(".top-medium > .top > .card");
+        for (let i = 0; i < cards.length; i++) {
+          const card = cards[i];
+          if (card.classList.contains("progress")) continue;
+          const cardEl = card as HTMLElement;
+          cardEl.style.width = "unset";
+          if (card.classList.contains("k-d")) {
+            const kdEl = card.querySelector(".stat-value-kd");
+            if (kdEl) {
+              kdEl.textContent = (
                 parseFloat(kills) / parseFloat(deaths)
-              ).toFixed(2)
+              ).toFixed(2);
             }
-          });
+          }
+        }
 
-        const shortId = content
-          .querySelector(".card-profile .copy-cont > .value")
-          .innerText.replace("#", "");
+        const copyCont = content.querySelector(".card-profile .copy-cont > .value");
+        const shortId = copyCont?.textContent?.replace("#", "") || "";
 
         if (settings.customizations) {
-          const nickname = profile.querySelector(".nickname");
+          const nickname = profile.querySelector(".nickname") as HTMLElement;
+          if (!nickname) return;
           nickname.style.cssText +=
             "display: flex; align-items: flex-end; gap: 0.25rem; overflow: unset !important;";
 
@@ -618,22 +724,20 @@ document.addEventListener("DOMContentLoaded", async () => {
           }
 
           const badgesElem = document.createElement("div");
-          badgesElem.style =
+          badgesElem.style.cssText =
             "display: flex; gap: 0.25rem; align-items: center;";
           badgesElem.className = "juice-badges";
           nickname.appendChild(badgesElem);
 
-          const customizations = JSON.parse(
-            localStorage.getItem("juice-customizations")
-          );
-
-          if (customizations?.find((c) => c.shortId === shortId)) {
-            const customs = customizations.find((c) => c.shortId === shortId);
+          const customs = customizationsMap.get(shortId);
+          if (customs) {
 
             let badgeStyle = "height: 32px; width: auto;";
 
             if (customs.gradient) {
-              nickname.querySelector(".nickname-span").style.cssText += `
+              const nicknameSpan = nickname.querySelector(".nickname-span") as HTMLElement;
+              if (nicknameSpan) {
+                nicknameSpan.style.cssText += `
               background: linear-gradient(${customs.gradient.rot
                 }, ${customs.gradient.stops.join(", ")});
               -webkit-background-clip: text;
@@ -641,39 +745,42 @@ document.addEventListener("DOMContentLoaded", async () => {
               text-shadow: ${customs.gradient.shadow || "0 0 0 transparent"
                 } !important;
             `;
+              }
             }
 
             if (customs.discord) {
               const linkedBadge = document.createElement("img");
               linkedBadge.src = "https://kirka.lukeskywalk.com/static/linked.png";
-              linkedBadge.style = badgeStyle;
+              linkedBadge.style.cssText = badgeStyle;
               badgesElem.appendChild(linkedBadge);
             }
 
             if (customs.booster) {
               const boosterBadge = document.createElement("img");
               boosterBadge.src = "https://kirka.lukeskywalk.com/static/booster.png";
-              boosterBadge.style = badgeStyle;
+              boosterBadge.style.cssText = badgeStyle;
               badgesElem.appendChild(boosterBadge);
             }
 
             if (customs.badges && customs.badges.length) {
-              customs.badges.forEach((badge) => {
+              for (let i = 0; i < customs.badges.length; i++) {
+                const badge = customs.badges[i];
                 const img = document.createElement("img");
                 img.src = badge;
-                img.style = badgeStyle;
+                img.style.cssText = badgeStyle;
                 badgesElem.appendChild(img);
-              });
+              }
             }
           }
         }
 
         if (shortId && shortId === "H8N3U4") {
-          const profile = document.querySelector(".profile-cont > .profile");
+          const profile = document.querySelector(".profile-cont > .profile") as HTMLElement;
+          if (!profile) return;
           profile.style.position = "relative";
 
           const div = document.createElement("div");
-          div.style = `
+          div.style.cssText = `
             position: absolute;
             bottom: 1rem;
             left: 1rem;
@@ -688,31 +795,43 @@ document.addEventListener("DOMContentLoaded", async () => {
           profile.appendChild(div);
         }
       }
-    }, 250);
+    };
+
+    const observer = new MutationObserver(() => {
+      processProfile();
+      if (document.querySelector(".profile > .content")) {
+        observer.disconnect();
+      }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+    addCleanupTask(() => observer.disconnect());
+
+    processProfile();
   };
 
-  const handleInGame = () => {
+  const handleInGame = (): void => {
     let settings = ipcRenderer.sendSync("get-settings");
 
-    const updateKD = () => {
-      const kills = document.querySelector(".kill-death .kill");
-      const deaths = document.querySelector("div > svg.icon-death")?.parentElement;
-      const kd = document.querySelector(".kill-death .kd");
+    const updateKD = (): void => {
+      const kills = document.querySelector(".kill-death .kill") as HTMLElement;
+      const deaths = document.querySelector("div > svg.icon-death")?.parentElement as HTMLElement;
+      const kd = document.querySelector(".kill-death .kd") as HTMLElement;
 
       if (!kills || !deaths || !kd) return;
 
-      const killCount = parseFloat(kills.innerText);
-      const deathCount = parseFloat(deaths.innerText) || 1;
+      const killCount = parseFloat(kills.textContent || "0");
+      const deathCount = parseFloat(deaths.textContent || "1") || 1;
       let kdRatio = (killCount / deathCount).toFixed(2);
 
       kd.innerHTML = `<span class="kd-ratio">${kdRatio}</span> <span class="text-kd" style="font-size: 0.75rem;">K/D</span>`;
     };
 
-    const createKD = () => {
+    const createKD = (): void => {
       if (document.querySelector(".kill-death .kd")) return;
-      const kills = document.querySelector(".kill-death .kill");
-      const deaths = document.querySelector("div > svg.icon-death")?.parentElement;
-      const kd = kills?.cloneNode(true);
+      const kills = document.querySelector(".kill-death .kill") as HTMLElement;
+      const deaths = document.querySelector("div > svg.icon-death")?.parentElement as HTMLElement;
+      const kd = kills?.cloneNode(true) as HTMLElement;
 
       if (!kd) return;
       kd.classList.add("kd");
@@ -722,54 +841,68 @@ document.addEventListener("DOMContentLoaded", async () => {
       kd.style.gap = "0.25rem";
       kd.innerHTML = `<span class="kd-ratio">0</span> <span class="text-kd" style="font-size: 0.75rem;">K/D</span>`;
 
-      document.querySelector(".kill-death").appendChild(kd);
-      kills.addEventListener("DOMSubtreeModified", updateKD);
-      deaths.addEventListener("DOMSubtreeModified", updateKD);
+      const killDeath = document.querySelector(".kill-death");
+      if (killDeath) killDeath.appendChild(kd);
+
+      const killsObserver = new MutationObserver(updateKD);
+      const deathsObserver = new MutationObserver(updateKD);
+      if (kills) killsObserver.observe(kills, { childList: true, characterData: true, subtree: true });
+      if (deaths) deathsObserver.observe(deaths, { childList: true, characterData: true, subtree: true });
+
+      addCleanupTask(() => {
+        killsObserver.disconnect();
+        deathsObserver.disconnect();
+      });
     };
 
-    document.addEventListener("juice-settings-changed", ({ detail }) => {
-      if (detail.setting === "kd_indicator") settings.kd_indicator = detail.value;
-      else if (detail.setting === "customizations") settings.customizations = detail.value;
-    });
+    const inGameSettingsChangedHandler = (event: Event): void => {
+      const customEvent = event as SettingsChangedEvent;
+      if (customEvent.detail.setting === "kd_indicator") settings.kd_indicator = customEvent.detail.value;
+      else if (customEvent.detail.setting === "customizations") settings.customizations = customEvent.detail.value;
+    };
+    document.addEventListener("juice-settings-changed", inGameSettingsChangedHandler);
+    addCleanupTask(() => document.removeEventListener("juice-settings-changed", inGameSettingsChangedHandler));
 
-    const customizations = JSON.parse(localStorage.getItem("juice-customizations"));
-
-    const interval = setInterval(() => {
+    const handleInGameInterval = function() {
       if (!document.querySelector(".desktop-game-interface")) {
-        clearInterval(interval);
+        clearInterval(inGameInterval);
         return;
       }
 
       const tabplayers = document.querySelectorAll(".desktop-game-interface .player-cont");
 
       if (settings.customizations) {
-        tabplayers.forEach((player) => {
-          const playerLeft = player.querySelector(".player-left");
-          const nickname = player.querySelector(".nickname");
-          const shortId = player.querySelector(".short-id")?.innerText.replace("#", "");
+        for (let i = 0; i < tabplayers.length; i++) {
+          const player = tabplayers[i];
+          const playerLeft = player.querySelector(".player-left") as HTMLElement;
+          const nickname = player.querySelector(".nickname") as HTMLElement;
+          const shortIdEl = player.querySelector(".short-id");
+          const shortId = shortIdEl?.textContent?.replace("#", "") || "";
 
           if (!shortId) {
             player.querySelector(".juice-badges")?.remove();
-            nickname.style = "";
-            playerLeft.style = "";
-            return;
+            if (nickname) nickname.style.cssText = "";
+            if (playerLeft) playerLeft.style.cssText = "";
+            continue;
           }
 
-          const customs = customizations?.find((c) => c.shortId === shortId);
+          const customs = customizationsMap.get(shortId);
 
           if (customs) {
-            let badgesElem = player.querySelector(".juice-badges");
+            let badgesElem = player.querySelector(".juice-badges") as HTMLElement;
 
             if (!badgesElem || badgesElem.dataset.shortId !== shortId) {
               badgesElem?.remove();
               badgesElem = document.createElement("div");
-              badgesElem.style = "display: flex; gap: 0.25rem; align-items: center; margin-left: 0.25rem;";
+              badgesElem.style.cssText = "display: flex; gap: 0.25rem; align-items: center; margin-left: 0.25rem;";
               badgesElem.className = "juice-badges";
               badgesElem.dataset.shortId = shortId;
 
-              nickname.style = "overflow: unset;";
-              playerLeft.style = "width: 0;";
-              playerLeft.insertBefore(badgesElem, playerLeft.lastChild);
+              if (nickname) nickname.style.cssText = "overflow: unset;";
+              if (playerLeft) {
+                playerLeft.style.cssText = "width: 0;";
+                playerLeft.insertBefore(badgesElem, playerLeft.lastChild);
+              }
             } else {
               badgesElem.innerHTML = "";
             }
@@ -777,24 +910,39 @@ document.addEventListener("DOMContentLoaded", async () => {
             const badgeStyle = "height: 22px; width: auto;";
 
             if (customs.gradient) {
-              nickname.style = `
+              if (nickname) {
+                const gradientRot = customs.gradient.rot;
+                const gradientStops = customs.gradient.stops.join(", ");
+                const gradientShadow = customs.gradient.shadow || "0 0 0 transparent";
+                nickname.style.cssText = `
                   overflow: unset;
-                  background: linear-gradient(${customs.gradient.rot}, ${customs.gradient.stops.join(", ")}) !important;
+                  background: linear-gradient(${gradientRot}, ${gradientStops}) !important;
                   -webkit-background-clip: text !important;
                   -webkit-text-fill-color: transparent !important;
-                  text-shadow: ${customs.gradient.shadow || "0 0 0 transparent"} !important;
+                  text-shadow: ${gradientShadow} !important;
                   font-weight: 700 !important;
                 `;
+              }
             } else {
-              nickname.style = "overflow: unset;";
+              if (nickname) nickname.style.cssText = "overflow: unset;";
             }
 
-            const addBadge = (src) => {
-              if (![...badgesElem.children].some(img => img.src === src)) {
-                const img = document.createElement("img");
-                img.src = src;
-                img.style.cssText = badgeStyle;
-                badgesElem.appendChild(img);
+            const addBadge = (src: string): void => {
+              if (badgesElem && badgesElem.children) {
+                let found = false;
+                const children = badgesElem.children;
+                for (let k = 0; k < children.length; k++) {
+                  if ((children[k] as HTMLImageElement).src === src) {
+                    found = true;
+                    break;
+                  }
+                }
+                if (!found) {
+                  const img = document.createElement("img");
+                  img.src = src;
+                  img.style.cssText = badgeStyle;
+                  badgesElem.appendChild(img);
+                }
               }
             };
 
@@ -802,38 +950,51 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (customs.booster) addBadge("https://kirka.lukeskywalk.com/static/booster.png");
 
             if (customs.badges?.length) {
-              customs.badges.forEach((badge) => addBadge(badge));
+              for (let j = 0; j < customs.badges.length; j++) {
+                addBadge(customs.badges[j]);
+              }
             }
           } else {
-            playerLeft.querySelector(".juice-badges")?.remove();
-            nickname.style = "";
-            playerLeft.style = "";
+            playerLeft?.querySelector(".juice-badges")?.remove();
+            if (nickname) nickname.style.cssText = "";
+            if (playerLeft) playerLeft.style.cssText = "";
           }
-        });
+        }
       } else {
-        tabplayers.forEach((player) => {
+        for (let i = 0; i < tabplayers.length; i++) {
+          const player = tabplayers[i];
           player.querySelector(".juice-badges")?.remove();
-          player.querySelector(".nickname").style = "";
-          player.querySelector(".player-left").style = "";
-        });
+          const nickname = player.querySelector(".nickname") as HTMLElement;
+          const playerLeft = player.querySelector(".player-left") as HTMLElement;
+          if (nickname) nickname.style.cssText = "";
+          if (playerLeft) playerLeft.style.cssText = "";
+        }
       }
 
       if (!document.querySelector(".kill-death .kd") && settings.kd_indicator) {
         createKD();
       } else if (document.querySelector(".kill-death .kd") && !settings.kd_indicator) {
-        document.querySelector(".kill-death .kd").remove();
+        document.querySelector(".kill-death .kd")?.remove();
       }
-    }, 1000);
+    };
+    const inGameInterval = setInterval(handleInGameInterval, 1000);
+    addCleanupTask(() => clearInterval(inGameInterval));
   };
 
-  const handleFriends = () => {
+  const handleMarket = (): void => {
+    // called when user navigates to the market.
+  };
+
+  const handleFriends = (): void => {
     const settings = ipcRenderer.sendSync("get-settings");
 
-    document.addEventListener("click", (e) => {
-      if (e.shiftKey && e.target.classList.contains("online")) {
-        const online = e.target;
-        if (online && online.innerText.includes("in game")) {
-          const content = online.innerText.match(/\[(.*?)\]/)[1];
+    const clickHandler = (e: MouseEvent): void => {
+      const target = e.target as HTMLElement;
+      if (e.shiftKey && target.classList.contains("online")) {
+        const online = target;
+        if (online && online.textContent?.includes("in game")) {
+          const match = online.textContent.match(/\[(.*?)\]/);
+          const content = match ? match[1] : "";
           const gameLink = `${base_url}games/${content}`;
           navigator.clipboard.writeText(gameLink);
           customNotification({
@@ -841,27 +1002,30 @@ document.addEventListener("DOMContentLoaded", async () => {
           });
         }
       }
-    });
+    };
+    document.addEventListener("click", clickHandler);
+    addCleanupTask(() => document.removeEventListener("click", clickHandler));
 
-    const interval = setInterval(() => {
-      if (!window.location.href.startsWith(`${base_url}friends`))
-        clearInterval(interval);
+    const processFriends = (): void => {
+      if (!window.location.href.startsWith(base_url + "friends")) {
+        return;
+      }
 
       const friendsCont = document.querySelector(".friends > .content > .allo");
       const limit = document.querySelector(
         ".friends > .content > .tabs > .limit"
-      );
-      const addFriends = document.querySelector(".friends > .add-friends");
+      ) as HTMLElement;
+      const addFriends = document.querySelector(".friends > .add-friends") as HTMLElement;
 
       if (!friendsCont || !limit || !addFriends) return;
 
       const friendsList = friendsCont.querySelector(".list");
       const requestsList = friendsCont.querySelector(".requests");
 
-      function createSearch() {
+      function createSearch(): void {
         const searchFriends = document.createElement("div");
         searchFriends.className = "search-friends";
-        searchFriends.style = `display: flex; flex-direction: column; align-items: flex-start; margin-top: 1.5rem; padding: 0 1rem;`;
+        searchFriends.style.cssText = `display: flex; flex-direction: column; align-items: flex-start; margin-top: 1.5rem; padding: 0 1rem;`;
         searchFriends.innerHTML = `
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: .5rem; width: 100%;">
             <span class="search-text">Search</span>
@@ -870,29 +1034,30 @@ document.addEventListener("DOMContentLoaded", async () => {
           <input type="text" placeholder="ENTER USERNAME OR ID" class="search-input" style="border: .125rem solid #202639; outline: none; background: #2f3957; width: 100%; height: 2.875rem; padding-left: .5rem; box-sizing: border-box; font-weight: 600; font-size: 1rem; color: #f2f2f2; box-shadow: 0 1px 2px rgba(0,0,0,.4), inset 0 0 8px rgba(0,0,0,.4); border-radius: .25rem;"/>`;
         addFriends.appendChild(searchFriends);
 
-        searchFriends
-          .querySelector(".search-input")
-          .addEventListener("input", (e) => {
-            const query = e.target.value.toLowerCase();
-            document.querySelectorAll(".friend").forEach((friend) => {
-              const nickname =
-                friend.querySelector(".nickname")?.innerText.toLowerCase() ||
-                "";
-              const shortId =
-                friend.querySelector(".friend-id")?.innerText.toLowerCase() ||
-                "";
-              friend.style.display =
-                nickname.includes(query) || shortId.includes(query)
-                  ? "flex"
-                  : "none";
-            });
-          });
+        const searchInput = searchFriends.querySelector(".search-input") as HTMLInputElement;
+        searchInput?.addEventListener("input", (e: Event) => {
+          const target = e.target as HTMLInputElement;
+          const query = target.value.toLowerCase();
+          const friends = document.querySelectorAll(".friend");
+          for (let i = 0; i < friends.length; i++) {
+            const friend = friends[i];
+            const friendEl = friend as HTMLElement;
+            const nicknameEl = friend.querySelector(".nickname");
+            const shortIdEl = friend.querySelector(".friend-id");
+            const nickname = nicknameEl?.textContent?.toLowerCase() || "";
+            const shortId = shortIdEl?.textContent?.toLowerCase() || "";
+            friendEl.style.display =
+              nickname.includes(query) || shortId.includes(query)
+                ? "flex"
+                : "none";
+          }
+        });
       }
 
-      function createDenyButton() {
+      function createDenyButton(): void {
         const denyRequests = document.createElement("div");
         denyRequests.className = "deny-requests";
-        denyRequests.style = `display: flex; flex-direction: column; align-items: flex-start; margin-top: 1.5rem; padding: 0 1rem;`;
+        denyRequests.style.cssText = `display: flex; flex-direction: column; align-items: flex-start; margin-top: 1.5rem; padding: 0 1rem;`;
         denyRequests.innerHTML = `
           <span style="margin-bottom: .5rem; font-size: 1rem; font-weight: 600; color: #f2f2f2;">Deny Requests</span>
           <div style="display: flex; gap: 0.25rem; width: 100%;">
@@ -901,36 +1066,36 @@ document.addEventListener("DOMContentLoaded", async () => {
           </div>`;
         addFriends.appendChild(denyRequests);
 
-        const denyButton = denyRequests.querySelector(".deny-button");
-        const denyReset = denyRequests.querySelector(".deny-reset");
+        const denyButton = denyRequests.querySelector(".deny-button") as HTMLButtonElement;
+        const denyReset = denyRequests.querySelector(".deny-reset") as HTMLButtonElement;
         let confirm = true;
         let updating = false;
-        let denyInterval;
+        let denyInterval: NodeJS.Timeout | undefined;
 
-        const resetButtonState = () => {
-          denyButton.innerText = "DENY ALL REQUESTS";
-          denyReset.style.display = "none";
+        const resetButtonState = (): void => {
+          if (denyButton) denyButton.textContent = "DENY ALL REQUESTS";
+          if (denyReset) denyReset.style.display = "none";
           confirm = true;
           updating = false;
-          clearInterval(denyInterval);
+          if (denyInterval) clearInterval(denyInterval);
         };
 
-        const handleDenyReset = () => resetButtonState();
+        const handleDenyReset = (): void => resetButtonState();
 
-        const handleDenyButtonClick = () => {
+        const handleDenyButtonClick = (): void => {
           if (updating || !document.querySelector(".allo > .requests"))
             return resetButtonState();
 
           if (confirm) {
-            denyButton.innerText = "ARE YOU SURE?";
-            denyReset.style.display = "flex";
+            if (denyButton) denyButton.textContent = "ARE YOU SURE?";
+            if (denyReset) denyReset.style.display = "flex";
             confirm = false;
             return;
           }
 
           updating = true;
-          denyButton.innerText = "CANCEL";
-          denyReset.style.display = "none";
+          if (denyButton) denyButton.textContent = "CANCEL";
+          if (denyReset) denyReset.style.display = "none";
 
           const requests = document.querySelectorAll(".requests .friend");
           let index = 0;
@@ -940,7 +1105,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (!updating) return clearInterval(denyInterval);
 
             const request = requests[index];
-            const deleteButton = request?.querySelector(".delete");
+            const deleteButton = request?.querySelector(".delete") as HTMLElement;
 
             if (deleteButton) deleteButton.click();
             index++;
@@ -952,37 +1117,39 @@ document.addEventListener("DOMContentLoaded", async () => {
           }, 500);
         };
 
-        denyReset.addEventListener("click", handleDenyReset);
-        denyButton.addEventListener("click", handleDenyButtonClick);
+        denyReset?.addEventListener("click", handleDenyReset);
+        denyButton?.addEventListener("click", handleDenyButtonClick);
       }
 
       if (!addFriends.querySelector(".search-friends")) createSearch();
       if (!addFriends.querySelector(".deny-requests")) createDenyButton();
 
       if (friendsList) {
-        limit.innerText = `${friendsList.children.length}/50`;
-        addFriends.querySelector(".deny-requests").style.display = "none";
+        limit.textContent = `${friendsList.children.length}/50`;
+        const denyRequests = addFriends.querySelector(".deny-requests") as HTMLElement;
+        if (denyRequests) denyRequests.style.display = "none";
       } else if (requestsList) {
-        limit.innerText = `${requestsList.children.length} Requests`;
-        addFriends.querySelector(".deny-requests").style.display = "flex";
+        limit.textContent = `${requestsList.children.length} Requests`;
+        const denyRequests = addFriends.querySelector(".deny-requests") as HTMLElement;
+        if (denyRequests) denyRequests.style.display = "flex";
       } else {
-        limit.innerText = "-";
-        addFriends.querySelector(".deny-requests").style.display = "none";
+        limit.textContent = "-";
+        const denyRequests = addFriends.querySelector(".deny-requests") as HTMLElement;
+        if (denyRequests) denyRequests.style.display = "none";
       }
-
-      const customizations = JSON.parse(
-        localStorage.getItem("juice-customizations")
-      );
 
       if (settings.customizations) {
         const friends = document.querySelectorAll(".friend");
-        friends.forEach((friend) => {
-          const shortId = friend.querySelector(".friend-id").innerText;
-          const customs = customizations?.find((c) => c.shortId === shortId);
+        for (let i = 0; i < friends.length; i++) {
+          const friend = friends[i];
+          const shortIdEl = friend.querySelector(".friend-id");
+          const shortId = shortIdEl?.textContent || "";
+          const customs = customizationsMap.get(shortId);
 
           if (customs) {
-            const nickname = friend.querySelector(".nickname");
-            nickname.style = `
+            const nickname = friend.querySelector(".nickname") as HTMLElement;
+            if (!nickname) continue;
+            nickname.style.cssText = `
             display: flex !important;
             align-items: flex-end !important;
             gap: 0.25rem !important;
@@ -990,7 +1157,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             `;
 
             if (customs.gradient)
-              nickname.style = `
+              nickname.style.cssText = `
               display: flex !important;
               align-items: flex-end !important;
               gap: 0.25rem !important;
@@ -1005,18 +1172,18 @@ document.addEventListener("DOMContentLoaded", async () => {
               font-weight: 700 !important;
             `;
 
-            let badgesElem = nickname.querySelector(".juice-badges");
+            let badgesElem = nickname.querySelector(".juice-badges") as HTMLElement;
 
             if (!badgesElem || badgesElem.dataset.shortId !== shortId) {
               if (badgesElem) badgesElem.remove();
 
               badgesElem = document.createElement("div");
-              badgesElem.style =
+              badgesElem.style.cssText =
                 "display: flex; gap: 0.25rem; align-items: center; width: 0;";
               badgesElem.className = "juice-badges";
               badgesElem.dataset.shortId = shortId;
               nickname.appendChild(badgesElem);
-            } else if (badgesElem.dataset.shortId === shortId) return;
+            } else if (badgesElem.dataset.shortId === shortId) continue;
 
             const badgeStyle = "height: 18px; width: auto;";
 
@@ -1034,23 +1201,35 @@ document.addEventListener("DOMContentLoaded", async () => {
               badgesElem.appendChild(boosterBadge);
             }
 
-            if (customs.badges && customs.badges.length)
-              customs.badges.forEach((badge) => {
+            if (customs.badges && customs.badges.length) {
+              for (let j = 0; j < customs.badges.length; j++) {
+                const badge = customs.badges[j];
                 const img = document.createElement("img");
                 img.src = badge;
                 img.style.cssText = badgeStyle;
                 badgesElem.appendChild(img);
-              });
+              }
+            }
           }
-        });
+        }
       }
-    }, 250);
+    };
+
+    const observer = new MutationObserver(() => {
+      processFriends();
+    });
+
+    const friendsContainer = document.querySelector(".friends") || document.body;
+    observer.observe(friendsContainer, { childList: true, subtree: true });
+    addCleanupTask(() => observer.disconnect());
+
+    processFriends();
   };
 
-  const customNotification = (data) => {
+  const customNotification = (data: { message: string; icon?: string }): void => {
     const notifElement = document.createElement("div");
     notifElement.classList.add("vue-notification-wrapper");
-    notifElement.style =
+    notifElement.style.cssText =
       "transition-timing-function: ease; transition-delay: 0s; transition-property: all;";
     notifElement.innerHTML = `
     <div
@@ -1082,9 +1261,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       }</span>
     </div>`;
 
-    document
-      .getElementsByClassName("vue-notification-group")[0]
-      .children[0].appendChild(notifElement);
+    const notifGroups = document.getElementsByClassName("vue-notification-group");
+    if (notifGroups[0] && notifGroups[0].children[0]) {
+      notifGroups[0].children[0].appendChild(notifElement);
+    }
 
     setTimeout(() => {
       try {
@@ -1093,9 +1273,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     }, 5000);
   };
 
-  ipcRenderer.on("notification", (_, data) => customNotification(data));
+  ipcRenderer.on("notification", (_: any, data: NotificationData) => customNotification(data));
 
-  ipcRenderer.on("url-change", (_, url) => {
+  ipcRenderer.on("url-change", (_: any, url: string) => {
+    runCleanup();
+
     console.log = originalConsole.log;
     console.warn = originalConsole.warn;
     console.error = originalConsole.error;
@@ -1112,7 +1294,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (url === `${base_url}friends`) handleFriends();
   });
 
-  const handleInitialLoad = () => {
+  const handleInitialLoad = (): void => {
     const url = window.location.href;
     if (url === `${base_url}`) {
       handleLobby();

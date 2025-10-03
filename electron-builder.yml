@@ -2,6 +2,12 @@ appId: xyz.skywalk.publikc
 productName: Publikc
 directories:
   output: "build"
+files:
+  - "dist/**/*"
+  - "package.json"
+  - "!src/**/*"
+  - "!tsconfig.json"
+  - "!*.ts"
 npmRebuild: false
 win:
   target:
@@ -9,18 +15,18 @@ win:
       arch:
         - x64
         - ia32
-  icon: "src/assets/img/icon.png"
+  icon: "dist/assets/img/icon.png"
   artifactName: "${name}-setup-win-${arch}-${version}.${ext}"
 mac:
   target: dmg
-  icon: "src/assets/img/icon.icns"
+  icon: "dist/assets/img/icon.icns"
   artifactName: "${name}-setup-mac-${version}.${ext}"
 linux:
   target:
     - AppImage
     - tar.gz
   category: Game
-  icon: "src/assets/img/icon.png"
+  icon: "dist/assets/img/icon.png"
   artifactName: "${name}-${version}-linux-${arch}.${ext}"
 publish:
     provider: github

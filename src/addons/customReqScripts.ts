@@ -1,19 +1,22 @@
 // from CarrySheriff!
 
-const customReqScripts = (settings) => {
+import type { Settings } from '../types';
+
+export function customReqScripts(settings: Settings): void {
   const originalXHR = window.XMLHttpRequest;
   const { base_url, custom_list_price, market_names } = settings;
-  let ids = [];
-  let newprice;
+  let ids: string[] = [];
+  let newprice: number;
   let updating = false;
 
   window.XMLHttpRequest = function () {
     const xhr = new originalXHR();
     let requestUrl = "";
 
-    xhr.open = function (method, url, ...args) {
+    const originalOpen = xhr.open;
+    xhr.open = function (method: string, url: string, ...args: any[]) {
       requestUrl = url;
-      originalXHR.prototype.open.apply(this, [method, url, ...args]);
+      originalOpen.apply(this, [method, url, ...args]);
     };
 
     xhr.onreadystatechange = function () {
@@ -21,23 +24,26 @@ const customReqScripts = (settings) => {
         if (
           requestUrl.includes(`api2.${base_url.replace("https://", "")}`) &&
           window.location.href === `${base_url}hub/market` &&
-		  market_names
+          market_names
         ) {
           ids = [];
           let modifiedResponse = JSON.parse(xhr.responseText);
           try {
-            modifiedResponse.forEach((item) => {
+            for (let i = 0; i < modifiedResponse.length; i++) {
+              const item = modifiedResponse[i];
               if (Object.keys(item).length == 3) {
-                Object.keys(item).forEach((item2) => {
+                const itemKeys = Object.keys(item);
+                for (let j = 0; j < itemKeys.length; j++) {
+                  const item2 = itemKeys[j];
                   if (typeof item[item2] == "string") {
                     ids.push(item[item2]);
                   }
-                });
+                }
               }
-            });
+            }
           } catch {}
           try {
-            let jsonResponse = modifiedResponse;
+            const jsonResponse = modifiedResponse;
             modifiedResponse = JSON.stringify(jsonResponse);
           } catch (e) {}
           Object.defineProperty(xhr, "responseText", {
@@ -50,36 +56,43 @@ const customReqScripts = (settings) => {
           location.href === `${base_url}inventory` &&
           xhr.responseText &&
           newprice &&
-		  custom_list_price
+          custom_list_price
         ) {
           try {
             const json = JSON.parse(xhr.responseText);
             if (Object.keys(json).length === 2) {
-              for (let key in json) {
+              const jsonKeys = Object.keys(json);
+              for (let i = 0; i < jsonKeys.length; i++) {
+                const key = jsonKeys[i];
                 if (typeof json[key] === "number" && json[key] !== 0) {
                   json[key] = newprice;
                 }
               }
             }
-            xhr.responseText = JSON.stringify(json);
+            Object.defineProperty(xhr, "responseText", {
+              value: JSON.stringify(json),
+            });
           } catch {}
         }
       }
     };
 
-    xhr.send = function (data) {
+    const originalSend = xhr.send;
+    xhr.send = function (data?: Document | XMLHttpRequestBodyInit | null) {
       if (
         requestUrl.includes(`api2.${base_url.replace("https://", "")}`) &&
         location.href === `${base_url}inventory` &&
-		document.querySelector(".vm--container > .vm--modal > .wrapper-modal")?.id !== "sell-item-modal" &&
+        document.querySelector(".vm--container > .vm--modal > .wrapper-modal")?.id !== "sell-item-modal" &&
         data &&
         newprice &&
-		custom_list_price
+        custom_list_price
       ) {
         try {
-          const json = JSON.parse(data);
+          const json = JSON.parse(data as string);
           if (Object.keys(json).length === 2) {
-            for (let key in json) {
+            const jsonKeys = Object.keys(json);
+            for (let i = 0; i < jsonKeys.length; i++) {
+              const key = jsonKeys[i];
               if (typeof json[key] === "number" && json[key] !== 0) {
                 json[key] = newprice;
               }
@@ -88,42 +101,42 @@ const customReqScripts = (settings) => {
           data = JSON.stringify(json);
         } catch {}
       }
-      originalXHR.prototype.send.call(this, data);
+      originalSend.call(this, data);
     };
 
     return xhr;
-  };
+  } as any;
 
-  async function marketUsers() {
+  async function marketUsers(): Promise<void> {
     const itemElements = document.getElementsByClassName("item-name");
+
+    const fetchHeaders = {
+      accept: "application/json, text/plain, */*",
+      "content-type": "application/json;charset=UTF-8",
+      Referer: base_url,
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+    };
 
     let count = 0;
     for (let i = 0; i < itemElements.length; i++) {
-      let sellerId = ids[i];
+      const sellerId = ids[i];
 
       try {
         await new Promise((resolve) => setTimeout(resolve, 200));
 
         let fetchreq = await fetch(`https://api.kirka.io/api/user/getProfile`, {
-          headers: {
-            accept: "application/json, text/plain, */*",
-            "content-type": "application/json;charset=UTF-8",
-            Referer: base_url,
-            "Referrer-Policy": "strict-origin-when-cross-origin",
-          },
+          headers: fetchHeaders,
           body: `{"id":"${sellerId}"}`,
           method: "POST",
         });
-        fetchreq = await fetchreq.json();
-        if (fetchreq["shortId"]) {
+        const fetchreqJson = await fetchreq.json();
+        if (fetchreqJson["shortId"]) {
           count++;
           if (count >= itemElements.length) {
             updating = false;
           }
-          itemElements[i].innerText = itemElements[i].innerText.split(" - ")[0];
-          itemElements[
-            i
-          ].innerText += ` - ${fetchreq["name"]}#${fetchreq["shortId"]}`;
+          itemElements[i].textContent = itemElements[i].textContent?.split(" - ")[0] || "";
+          itemElements[i].textContent += ` - ${fetchreqJson["name"]}#${fetchreqJson["shortId"]}`;
         }
       } catch {
         count++;
@@ -139,14 +152,13 @@ const customReqScripts = (settings) => {
     type: "number",
     min: "0",
     placeholder: "Custom amount",
-    onchange: (e) => (newprice = Number(e.target.value)),
+    onchange: (e: Event) => (newprice = Number((e.target as HTMLInputElement).value)),
   });
 
   Object.assign(inputElem.style, {
     marginTop: "-.5em",
     marginBottom: "1em",
     border: ".125rem solid #202639",
-    background: "none",
     outline: "none",
     background: "#2f3957",
     width: "50%",
@@ -163,7 +175,7 @@ const customReqScripts = (settings) => {
   const observer = new MutationObserver(() => {
     if (window.location.href === `${base_url}inventory` && custom_list_price) {
       const sellElem = document.querySelector(".cont-sell");
-      if (sellElem && !document.getElementById("juice-custom-listing") && sellElem.parentElement.parentElement.id !== "sell-item-modal") {
+      if (sellElem && !document.getElementById("juice-custom-listing") && sellElem.parentElement?.parentElement?.id !== "sell-item-modal") {
         sellElem.children[1].after(inputElem);
       }
     }
@@ -173,10 +185,10 @@ const customReqScripts = (settings) => {
       document.getElementsByClassName("subjects").length === 2 &&
       !document
         .getElementsByClassName("item-name")[0]
-        ?.innerText.includes(" - ") &&
+        ?.textContent?.includes(" - ") &&
       !updating &&
       ids.length > 0 &&
-	  market_names
+      market_names
     ) {
       marketUsers();
       updating = true;
@@ -184,6 +196,4 @@ const customReqScripts = (settings) => {
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
-};
-
-module.exports = { customReqScripts };
+}

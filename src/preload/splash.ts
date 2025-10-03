@@ -1,13 +1,13 @@
-const { ipcRenderer } = require("electron");
-const version = require("../../package.json").version;
+import { ipcRenderer } from "electron";
+import { version } from "../../package.json";
 
 document.addEventListener("DOMContentLoaded", () => {
-  const versionElement = document.querySelector(".ver");
-  const statusElement = document.querySelector(".status");
+  const versionElement = document.querySelector(".ver") as HTMLElement;
+  const statusElement = document.querySelector(".status") as HTMLElement;
 
   versionElement.textContent = `v${version}`;
 
-  const updateStatus = (status) => (statusElement.textContent = status);
+  const updateStatus = (status: string) => (statusElement.textContent = status);
 
   ipcRenderer.send("check-for-updates");
   updateStatus("Checking for updates...");
@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
     ipcRenderer.send("quit-and-install");
   });
 
-  ipcRenderer.on("download-progress", (_, progress) =>
+  ipcRenderer.on("download-progress", (_: any, progress: { percent: number }) =>
     updateStatus(`Downloading update: ${Math.round(progress.percent)}%`)
   );
 });
