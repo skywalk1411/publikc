@@ -1,0 +1,108 @@
+name: Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    permissions:
+      contents: write
+
+    strategy:
+      matrix:
+        os: [macos-13, windows-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+            arch: x64
+          - os: macos-13
+            arch: x64
+          - os: ubuntu-latest
+            arch: x64
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Compile TypeScript
+        run: npm run compile
+
+      # OS-Specific version extraction
+      - name: Get version from package.json
+        id: get_version_name
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            $version = node -p "require('./package.json').version"
+            echo "version=$version" >> $env:GITHUB_OUTPUT
+          else
+            version=$(node -p "require('./package.json').version")
+            echo "version=$version" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2.0.6
+        with:
+          tag_name: v${{ steps.get_version_name.outputs.version }}
+          name: Release ${{ steps.get_version_name.outputs.version }}
+          draft: true
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Electron App
+        run: npm run build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List build directory
+        run: ls -l build
+
+      # WINDOWS
+      - name: Upload Windows build
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: publikc-setup-win-x64.exe
+          path: build/publikc-setup-win-x64-*.exe
+          if-no-files-found: warn
+          compression-level: 6
+          overwrite: false
+          include-hidden-files: false
+
+      # MACOS
+      - name: Upload macOS build
+        if: matrix.os == 'macos-13'
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: publikc-setup-mac.dmg
+          path: |
+            build/publikc-setup-mac-*.dmg
+            build/publikc-setup-mac-*.dmg.blockmap
+          if-no-files-found: warn
+          compression-level: 6
+          overwrite: false
+          include-hidden-files: false
+
+      # LINUX
+      - name: Upload Linux build
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: publikc-linux-builds
+          path: |
+            build/publikc-*-linux-x86_64.AppImage
+            build/publikc-*-linux-x64.tar.gz
+          if-no-files-found: warn
+          compression-level: 6
+          overwrite: false
+          include-hidden-files: false
