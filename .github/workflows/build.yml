@@ -36,17 +36,11 @@ jobs:
       - name: Compile TypeScript
         run: npm run compile
 
-      # OS-Specific version extraction
       - name: Get version from package.json
         id: get_version_name
         run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            $version = node -p "require('./package.json').version"
-            echo "version=$version" >> $env:GITHUB_OUTPUT
-          else
-            version=$(node -p "require('./package.json').version")
-            echo "version=$version" >> $GITHUB_OUTPUT
-          fi
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Create Release
@@ -65,7 +59,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: List build directory
-        run: ls -l build
+        run: ls build
+        shell: bash
 
       # WINDOWS
       - name: Upload Windows build
