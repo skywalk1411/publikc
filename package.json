@@ -1,6 +1,6 @@
 {
   "name": "publikc",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Electron client for Kirka.io",
   "main": "dist/main.js",
   "scripts": {
@@ -29,10 +29,12 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "bootstrap": "^5.3.2",
     "discord-rpc": "^4.0.1",
     "electron-localshortcut": "^3.2.1",
     "electron-store": "^8.2.0",
     "electron-updater": "^6.2.1",
+    "three": "^0.160.0",
     "v8-compile-cache": "^2.4.0"
   },
   "optionalDependencies": {
