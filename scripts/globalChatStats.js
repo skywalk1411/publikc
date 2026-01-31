@@ -30,6 +30,7 @@ const mappingConfigs = {
 let cachedFavoritePricelist;
 let cachedFallbackEnable;
 let cachedFallbackPricelist;
+let cachedTradeOfferLink;
 let cachedInventoryTotal;
 let cachedInventoryTotalWeapons;
 let cachedInventoryTotalChests;
@@ -43,6 +44,9 @@ function initializeLocalStorage() {
     if (!localStorage.globalFallbackEnable) {
         localStorage.globalFallbackEnable = "off";
         localStorage.globalFallbackPricelist = "automatic";
+    }
+    if (!localStorage.globalTradeOfferLink) {
+        localStorage.globalTradeOfferLink = "off";
     }
     if (!localStorage.inventoryTotal) {
         localStorage.inventoryTotal = "0";
@@ -58,6 +62,7 @@ function syncLocalStorageCache() {
     cachedFavoritePricelist = localStorage.globalFavoritePricelist;
     cachedFallbackEnable = localStorage.globalFallbackEnable;
     cachedFallbackPricelist = localStorage.globalFallbackPricelist;
+    cachedTradeOfferLink = localStorage.globalTradeOfferLink;
     cachedInventoryTotal = Number(localStorage.inventoryTotal);
     cachedInventoryTotalWeapons = Number(localStorage.inventoryTotalWeapons);
     cachedInventoryTotalChests = Number(localStorage.inventoryTotalChests);
@@ -160,6 +165,7 @@ const optionGroup = createElementWithClass("div", "option-group");
 const optionDiv = createElementWithClass("div", "option");
 const optionDivFallback = createElementWithClass("div", "option");
 const optionDivFallbackEnable = createElementWithClass("div", "option");
+const optionDivTradeOfferLink = createElementWithClass("div", "option");
 const mappingSelect = createDropdown("global_mapping_config", [
     { value: "default", text: "Default (average)" },
     { value: "automatic", text: "Automatic" },
@@ -176,15 +182,22 @@ const fallbackEnableSelect = createDropdown("global_fallback_enable", [
     { value: "on", text: "On" },
     { value: "off", text: "Off" }
 ]);
+const tradeOfferLinkSelect = createDropdown("global_tradeoffer_link", [
+    { value: "on", text: "On" },
+    { value: "off", text: "Off" }
+]);
 const mappingLeftDiv = createElementWithClass("div", "left");
 const fallbackLeftDiv = createElementWithClass("div", "left");
 const fallbackEnableLeftDiv = createElementWithClass("div", "left");
+const tradeOfferLinkLeftDiv = createElementWithClass("div", "left");
 const mappingLabel = createElementWithText("span", "Favorite pricelist");
 const fallbackLabel = createElementWithText("span", "Fallback pricelist");
 const fallbackEnableLabel = createElementWithText("span", "Enable Fallback");
+const tradeOfferLinkLabel = createElementWithText("span", "Trade Offer Link");
 const mappingDesc = createElementWithClass("span", "description", "Select pricelist to use by default");
 const fallbackDesc = createElementWithClass("span", "description", "If favorite pricelist price is 0, fallback to pricelist");
 const fallbackEnableDesc = createElementWithClass("span", "description", "Enable fallback feature or not");
+const tradeOfferLinkDesc = createElementWithClass("span", "description", "Add clickable publikc:// link to trade offers in chat");
 mappingLeftDiv.appendChild(mappingLabel);
 mappingLeftDiv.appendChild(mappingDesc);
 optionDiv.appendChild(mappingLeftDiv);
@@ -197,6 +210,10 @@ fallbackEnableLeftDiv.appendChild(fallbackEnableLabel);
 fallbackEnableLeftDiv.appendChild(fallbackEnableDesc);
 optionDivFallbackEnable.appendChild(fallbackEnableLeftDiv);
 optionDivFallbackEnable.appendChild(fallbackEnableSelect);
+tradeOfferLinkLeftDiv.appendChild(tradeOfferLinkLabel);
+tradeOfferLinkLeftDiv.appendChild(tradeOfferLinkDesc);
+optionDivTradeOfferLink.appendChild(tradeOfferLinkLeftDiv);
+optionDivTradeOfferLink.appendChild(tradeOfferLinkSelect);
 const tooltipContainer = createElementWithClass("div", "tooltip-container-GVL");
 const tooltipIcon = createElementWithClass("span", "info-icon-GVL", "i");
 const tooltipText = createElementWithClass("div", "tooltip-text-GVL", "Made by SheriffCarry and skywalk v1.0.0");
@@ -214,6 +231,7 @@ optionGroup.appendChild(tooltipContainer);
 optionGroup.appendChild(optionDiv);
 optionGroup.appendChild(optionDivFallbackEnable);
 optionGroup.appendChild(optionDivFallback);
+optionGroup.appendChild(optionDivTradeOfferLink);
 // ============================================================================
 // Data Fetching
 // ============================================================================
@@ -296,6 +314,14 @@ document.addEventListener("DOMContentLoaded", async () => {
                 fallbackSelector.value = cachedFallbackPricelist;
                 fallbackSelector.addEventListener("change", () => {
                     localStorage.globalFallbackPricelist = fallbackSelector.value;
+                    syncLocalStorageCache();
+                });
+            }
+            const tradeOfferLinkSelector = document.getElementById("global_tradeoffer_link");
+            if (tradeOfferLinkSelector) {
+                tradeOfferLinkSelector.value = cachedTradeOfferLink;
+                tradeOfferLinkSelector.addEventListener("change", () => {
+                    localStorage.globalTradeOfferLink = tradeOfferLinkSelector.value;
                     syncLocalStorageCache();
                 });
             }
@@ -449,6 +475,9 @@ function trimMessage(messageSplit) {
     let offeringTotal = 0;
     let wantedTotal = 0;
     let favorableTrade = "";
+    const myItems = [];
+    const yourItems = [];
+    let extractedTradeId = "";
     // Optimization: Cache length in loop
     for (let i = 0, len = messageSplit.length; i < len; i++) {
         const segment = messageSplit[i];
@@ -470,7 +499,13 @@ function trimMessage(messageSplit) {
             const parts = segment.trim().split("**");
             const prefix = parts[0];
             const tradeId = parts[1];
-            newMessage += " [" + formatNumber(wantedTotal) + "] Status: " + (offeringTotal - wantedTotal > 0 ? '+' : '') + formatNumber(offeringTotal - wantedTotal) + (favorableTrade !== '' ? ' ' + favorableTrade : '') + " " + prefix + "**" + tradeId + "** ";
+            extractedTradeId = tradeId || "";
+            // Generate trade offer URL if enabled
+            let tradeOfferMarker = "";
+            if (cachedTradeOfferLink === "on") {
+                tradeOfferMarker = " %%TRADE_OFFER_LINK%% ";
+            }
+            newMessage += " [" + formatNumber(wantedTotal) + "] Status: " + (offeringTotal - wantedTotal > 0 ? '+' : '') + formatNumber(offeringTotal - wantedTotal) + (favorableTrade !== '' ? ' ' + favorableTrade : '') + tradeOfferMarker + " " + prefix + "**" + tradeId + "** ";
         }
         else {
             if (segment.includes("for your")) {
@@ -486,9 +521,11 @@ function trimMessage(messageSplit) {
                     const totalItemPrice = detail.quantity * itemPrice;
                     if (isOffering) {
                         offeringTotal += totalItemPrice;
+                        myItems.push({ name: detail.name, quantity: detail.quantity });
                     }
                     else {
                         wantedTotal += totalItemPrice;
+                        yourItems.push({ name: detail.name, quantity: detail.quantity });
                     }
                     newMessage += segment + " (" + (detail.quantity > 1 ? detail.quantity + "x" + formatNumber(itemPrice) + "= " : '') + formatNumber(totalItemPrice) + ")";
                 }
@@ -497,6 +534,39 @@ function trimMessage(messageSplit) {
                 }
             }
         }
+    }
+    // Replace marker with actual trade offer URL
+    if (cachedTradeOfferLink === "on" && newMessage.includes("%%TRADE_OFFER_LINK%%")) {
+        let tradeStringUrl = "publikc://tradeoffer?";
+        let nonceYour = 1;
+        let nonceFor = 1;
+        yourItems.forEach(({ name, quantity }) => {
+            if (nonceYour === 1) {
+                tradeStringUrl += `your${nonceYour}=${encodeURIComponent(name)}&yourq${nonceYour}=${quantity}`;
+            }
+            else {
+                tradeStringUrl += `&your${nonceYour}=${encodeURIComponent(name)}&yourq${nonceYour}=${quantity}`;
+            }
+            nonceYour += 1;
+        });
+        myItems.forEach(({ name, quantity }) => {
+            if (nonceFor === 1 && yourItems.length === 0) {
+                tradeStringUrl += `for${nonceFor}=${encodeURIComponent(name)}&forq${nonceFor}=${quantity}`;
+            }
+            else {
+                tradeStringUrl += `&for${nonceFor}=${encodeURIComponent(name)}&forq${nonceFor}=${quantity}`;
+            }
+            nonceFor += 1;
+        });
+        // Add trade ID to URL if available
+        if (extractedTradeId) {
+            tradeStringUrl += `&tradeId=${encodeURIComponent(extractedTradeId)}`;
+        }
+        // Store the URL for later DOM injection
+        window.__tradeOfferUrlMap = window.__tradeOfferUrlMap || new Map();
+        const uniqueMarker = `%%TRADE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}%%`;
+        window.__tradeOfferUrlMap.set(uniqueMarker, tradeStringUrl);
+        newMessage = newMessage.replace("%%TRADE_OFFER_LINK%%", uniqueMarker);
     }
     return newMessage;
 }
@@ -784,12 +854,179 @@ function stopInventoryProcessing() {
 // Start inventory processing
 startInventoryProcessing();
 // ============================================================================
+// Trade Offer Link DOM Injection
+// ============================================================================
+// Store URLs globally for click handler
+window.__tradeOfferUrls = window.__tradeOfferUrls || {};
+// MutationObserver to replace markers with actual clickable links
+const tradeOfferObserver = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+        if (mutation.type === 'childList') {
+            mutation.addedNodes.forEach((node) => {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    const element = node;
+                    // Check if this is a chat message
+                    const textContent = element.textContent || '';
+                    if (textContent.includes('%%TRADE_')) {
+                        // Skip if already processed
+                        if (element.dataset.tradeLinksProcessed === 'true')
+                            return;
+                        const urlMap = window.__tradeOfferUrlMap;
+                        if (urlMap) {
+                            urlMap.forEach((url, marker) => {
+                                if (textContent.includes(marker)) {
+                                    // Generate a simple ID for this trade
+                                    const tradeId = marker.replace(/%%TRADE_|%%/g, '');
+                                    // Store URL globally
+                                    window.__tradeOfferUrls[tradeId] = url;
+                                    // Find all text nodes containing the marker
+                                    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null);
+                                    const nodesToReplace = [];
+                                    let currentNode = walker.nextNode();
+                                    while (currentNode) {
+                                        if (currentNode.textContent?.includes(marker)) {
+                                            nodesToReplace.push({ node: currentNode, marker: marker, tradeId: tradeId });
+                                        }
+                                        currentNode = walker.nextNode();
+                                    }
+                                    // Replace markers with links
+                                    nodesToReplace.forEach(({ node, marker, tradeId }) => {
+                                        const text = node.textContent || '';
+                                        const parts = text.split(marker);
+                                        if (parts.length > 1) {
+                                            const fragment = document.createDocumentFragment();
+                                            parts.forEach((part, index) => {
+                                                if (index > 0) {
+                                                    // Create clickable link with onclick attribute
+                                                    const link = document.createElement('a');
+                                                    link.href = 'javascript:void(0)';
+                                                    link.textContent = '[Open Trade]';
+                                                    link.style.color = '#4CAF50';
+                                                    link.style.textDecoration = 'underline';
+                                                    link.style.cursor = 'pointer';
+                                                    link.style.fontWeight = 'bold';
+                                                    link.setAttribute('onclick', `(function(){ var url = window.__tradeOfferUrls['${tradeId}']; if(url) { console.log('[Trade Link] Opening:', url); try { require('electron').shell.openExternal(url); } catch(e) { console.error('[Trade Link] Error:', e); } } })()`);
+                                                    link.classList.add('trade-offer-link');
+                                                    fragment.appendChild(link);
+                                                }
+                                                if (part) {
+                                                    fragment.appendChild(document.createTextNode(part));
+                                                }
+                                            });
+                                            node.parentNode?.replaceChild(fragment, node);
+                                            // Mark element as processed
+                                            element.dataset.tradeLinksProcessed = 'true';
+                                            // Don't delete marker - keep it in case chat re-renders
+                                            // urlMap.delete(marker);
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    }
+                }
+            });
+        }
+    }
+});
+// Process existing messages that already contain markers
+function processExistingTradeOfferLinks() {
+    const urlMap = window.__tradeOfferUrlMap;
+    if (!urlMap || urlMap.size === 0)
+        return;
+    // Find all elements that contain trade offer markers
+    const allElements = document.querySelectorAll('*');
+    allElements.forEach((element) => {
+        const textContent = element.textContent || '';
+        if (textContent.includes('%%TRADE_')) {
+            // Skip if already processed
+            const htmlElement = element;
+            if (htmlElement.dataset.tradeLinksProcessed === 'true')
+                return;
+            urlMap.forEach((url, marker) => {
+                if (textContent.includes(marker)) {
+                    // Generate a simple ID for this trade
+                    const tradeId = marker.replace(/%%TRADE_|%%/g, '');
+                    // Store URL globally
+                    window.__tradeOfferUrls[tradeId] = url;
+                    // Find all text nodes containing the marker
+                    const walker = document.createTreeWalker(htmlElement, NodeFilter.SHOW_TEXT, null);
+                    const nodesToReplace = [];
+                    let currentNode = walker.nextNode();
+                    while (currentNode) {
+                        if (currentNode.textContent?.includes(marker)) {
+                            nodesToReplace.push({ node: currentNode, marker: marker, tradeId: tradeId });
+                        }
+                        currentNode = walker.nextNode();
+                    }
+                    // Replace markers with links
+                    nodesToReplace.forEach(({ node, marker, tradeId }) => {
+                        const text = node.textContent || '';
+                        const parts = text.split(marker);
+                        if (parts.length > 1) {
+                            const fragment = document.createDocumentFragment();
+                            parts.forEach((part, index) => {
+                                if (index > 0) {
+                                    // Create clickable link with onclick attribute
+                                    const link = document.createElement('a');
+                                    link.href = 'javascript:void(0)';
+                                    link.textContent = '[Open Trade]';
+                                    link.style.color = '#4CAF50';
+                                    link.style.textDecoration = 'underline';
+                                    link.style.cursor = 'pointer';
+                                    link.style.fontWeight = 'bold';
+                                    link.setAttribute('onclick', `(function(){ var url = window.__tradeOfferUrls['${tradeId}']; if(url) { console.log('[Trade Link] Opening:', url); try { require('electron').shell.openExternal(url); } catch(e) { console.error('[Trade Link] Error:', e); } } })()`);
+                                    link.classList.add('trade-offer-link');
+                                    fragment.appendChild(link);
+                                }
+                                if (part) {
+                                    fragment.appendChild(document.createTextNode(part));
+                                }
+                            });
+                            node.parentNode?.replaceChild(fragment, node);
+                            // Mark element as processed
+                            htmlElement.dataset.tradeLinksProcessed = 'true';
+                        }
+                    });
+                }
+            });
+        }
+    });
+    console.log('[Trade Offer Link] Processed existing messages');
+}
+// Start observing chat messages
+function startTradeOfferLinkObserver() {
+    // Wait for chat container to exist
+    const checkChatContainer = setInterval(() => {
+        const chatContainer = document.querySelector('.chat-messages, .messages, [class*="chat"]');
+        if (chatContainer) {
+            clearInterval(checkChatContainer);
+            // Process any existing messages first
+            processExistingTradeOfferLinks();
+            // Then start observing for new messages
+            tradeOfferObserver.observe(chatContainer, {
+                childList: true,
+                subtree: true
+            });
+            console.log('[Trade Offer Link] Observer started');
+        }
+    }, 1000);
+}
+// Start observer when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startTradeOfferLinkObserver);
+}
+else {
+    startTradeOfferLinkObserver();
+}
+// ============================================================================
 // Global Cleanup
 // ============================================================================
 // Expose cleanup functions globally for manual cleanup if needed
 window.globalChatStatsCleanup = function () {
     stopPriceListUpdate();
     stopInventoryProcessing();
+    tradeOfferObserver.disconnect();
     // Note: WebSocket listeners auto-cleanup, no manual cleanup needed
 };
 // Optional: Auto-cleanup on page unload (commented out by default)
