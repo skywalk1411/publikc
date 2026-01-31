@@ -32,9 +32,7 @@ export function initResourceSwapper(): void {
       if (!fs.existsSync(folderPath))
         fs.mkdirSync(folderPath, { recursive: true });
     }
-  } catch (e) {
-    console.error(e);
-  }
+  } catch {}
 
   const swap: {
     filter: { urls: string[] };

@@ -341,9 +341,7 @@ class Menu {
             this.initMenu();
           }
           modal.remove();
-        } catch (error) {
-          console.error("Error importing settings:", error);
-        }
+        } catch {}
       });
 
       bottom.appendChild(confirm);
@@ -424,8 +422,7 @@ class Menu {
             reader.onloadend = () => resolve(reader.result as string);
             reader.readAsDataURL(blob);
           });
-        } catch (error) {
-          console.error(`Error fetching or converting ${url}:`, error);
+        } catch {
           return "";
         }
       };

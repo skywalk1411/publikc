@@ -29,11 +29,11 @@ class DiscordRPC {
   }
 
   private login(): void {
-    this.client.login({ clientId: this.clientId }).catch(console.error);
+    this.client.login({ clientId: this.clientId }).catch(() => {});
   }
 
   setActivity(activity: Activity = this.defaultActivity()): void {
-    this.client.setActivity(activity).catch(console.error);
+    this.client.setActivity(activity).catch(() => {});
   }
 
   setState(state: string): void {

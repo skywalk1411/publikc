@@ -20,9 +20,7 @@ const runCleanup = (): void => {
   cleanupTasks.forEach(fn => {
     try {
       fn();
-    } catch (error) {
-      console.error("Cleanup error:", error);
-    }
+    } catch {}
   });
   cleanupTasks.length = 0;
 };
@@ -47,10 +45,7 @@ if (!window.location.href.startsWith(base_url)) {
     const scriptPath = path.join(scriptsPath, script);
     try {
       require(scriptPath);
-    }
-    catch (error) {
-      console.error(`Error loading script ${script}:`, error);
-    }
+    } catch {}
   }
 }
 
@@ -855,6 +850,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     };
 
+    const addBadge = (badgesElem: HTMLElement, src: string, badgeStyle: string): void => {
+      const children = badgesElem.children;
+      for (let k = 0; k < children.length; k++) {
+        if ((children[k] as HTMLImageElement).src === src) return;
+      }
+      const img = document.createElement("img");
+      img.src = src;
+      img.style.cssText = badgeStyle;
+      badgesElem.appendChild(img);
+    };
+
     const inGameSettingsChangedHandler = (event: Event): void => {
       const customEvent = event as SettingsChangedEvent;
       if (customEvent.detail.setting === "kd_indicator") settings.kd_indicator = customEvent.detail.value;
@@ -927,31 +933,12 @@ document.addEventListener("DOMContentLoaded", async () => {
               if (nickname) nickname.style.cssText = "overflow: unset;";
             }
 
-            const addBadge = (src: string): void => {
-              if (badgesElem && badgesElem.children) {
-                let found = false;
-                const children = badgesElem.children;
-                for (let k = 0; k < children.length; k++) {
-                  if ((children[k] as HTMLImageElement).src === src) {
-                    found = true;
-                    break;
-                  }
-                }
-                if (!found) {
-                  const img = document.createElement("img");
-                  img.src = src;
-                  img.style.cssText = badgeStyle;
-                  badgesElem.appendChild(img);
-                }
-              }
-            };
-
-            if (customs.discord) addBadge("https://kirka.lukeskywalk.com/static/linked.png");
-            if (customs.booster) addBadge("https://kirka.lukeskywalk.com/static/booster.png");
+            if (customs.discord) addBadge(badgesElem, "https://kirka.lukeskywalk.com/static/linked.png", badgeStyle);
+            if (customs.booster) addBadge(badgesElem, "https://kirka.lukeskywalk.com/static/booster.png", badgeStyle);
 
             if (customs.badges?.length) {
               for (let j = 0; j < customs.badges.length; j++) {
-                addBadge(customs.badges[j]);
+                addBadge(badgesElem, customs.badges[j], badgeStyle);
               }
             }
           } else {

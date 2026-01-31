@@ -87,7 +87,7 @@ const createWindow = (): void => {
     show: false,
     backgroundColor: "#141414",
     webPreferences: {
-      nodeIntegration: true,
+      nodeIntegration: false,
       contextIsolation: false,
       webSecurity: false,
       preload: path.join(__dirname, "../preload/game.js"),
