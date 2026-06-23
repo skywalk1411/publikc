@@ -32,7 +32,10 @@ export function registerShortcuts(window: BrowserWindow): void {
   });
 
   register("F6", () => {
-    window.loadURL(clipboard.readText());
+    const url = clipboard.readText().trim();
+    if (url.startsWith("https://") || url.startsWith("http://")) {
+      window.loadURL(url);
+    }
   });
 
   register("F7", () => clipboard.writeText(window.webContents.getURL()));

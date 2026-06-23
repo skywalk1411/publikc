@@ -1,4 +1,15 @@
 node_modules
 build
 dist/
-CLAUDE.md
+kircraftclient/
+clients/
+scripts/
+!scripts/globalChatStats.js
+!scripts/globalChatStats.ts
+!scripts/Playercount.js
+!scripts/globalChatStats.js
+!scripts/minify.js
+!scripts/csl4.js
+!scripts/csl4.ts
+!scripts/customizations.json
+!scripts/news.json

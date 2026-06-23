@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Global Chat Item Prices and Trade Stats
 // @description  Add (price) in global chat after each [item], and some trade stats if the offering is good or bad. Also add price to items in Market, Inventory, and also have a Inventory total value per section.
-// @version      1.0.1
+// @version      1.0.5
 // @author       SheriffCarry, skywalk
-// @github       https://api.github.com/repos/SheriffCarry/KirkaScripts/contents/Userscript/globalChatItemPricesAndTradeStats.js
+// @github
 // ==/UserScript==
 
 // ============================================================================
@@ -43,7 +43,8 @@ interface PriceListEntry {
   average?: string | number;
   automatic?: string | number;
   bros?: string | number;
-  yzzz?: string | number;
+  bolt?: string | number;
+  fate?: string | number;
   rarity?: string;
   [key: string]: string | number | undefined;
 }
@@ -71,7 +72,8 @@ const mappingConfigs: MappingConfig = {
     default: { name: "itemName", type: "type", price: "average", rarity: "rarity" },
     automatic: { name: "itemName", type: "type", price: "automatic", rarity: "rarity" },
     bros: { name: "itemName", type: "type", price: "bros", rarity: "rarity" },
-    yzzz: { name: "itemName", type: "type", price: "yzzz", rarity: "rarity" }
+    bolt: { name: "itemName", type: "type", price: "bolt", rarity: "rarity" },
+    fate: { name: "itemName", type: "type", price: "fate", rarity: "rarity" }
   }
 };
 
@@ -83,7 +85,6 @@ const mappingConfigs: MappingConfig = {
 let cachedFavoritePricelist: string;
 let cachedFallbackEnable: string;
 let cachedFallbackPricelist: string;
-let cachedTradeOfferLink: string;
 let cachedInventoryTotal: number;
 let cachedInventoryTotalWeapons: number;
 let cachedInventoryTotalChests: number;
@@ -102,10 +103,6 @@ function initializeLocalStorage(): void {
     localStorage.globalFallbackPricelist = "automatic";
   }
 
-  if (!localStorage.globalTradeOfferLink) {
-    localStorage.globalTradeOfferLink = "off";
-  }
-
   if (!localStorage.inventoryTotal) {
     localStorage.inventoryTotal = "0";
     localStorage.inventoryTotalWeapons = "0";
@@ -122,7 +119,6 @@ function syncLocalStorageCache(): void {
   cachedFavoritePricelist = localStorage.globalFavoritePricelist;
   cachedFallbackEnable = localStorage.globalFallbackEnable;
   cachedFallbackPricelist = localStorage.globalFallbackPricelist;
-  cachedTradeOfferLink = localStorage.globalTradeOfferLink;
   cachedInventoryTotal = Number(localStorage.inventoryTotal);
   cachedInventoryTotalWeapons = Number(localStorage.inventoryTotalWeapons);
   cachedInventoryTotalChests = Number(localStorage.inventoryTotalChests);
@@ -244,20 +240,21 @@ const optionGroup = createElementWithClass("div", "option-group");
 const optionDiv = createElementWithClass("div", "option");
 const optionDivFallback = createElementWithClass("div", "option");
 const optionDivFallbackEnable = createElementWithClass("div", "option");
-const optionDivTradeOfferLink = createElementWithClass("div", "option");
 
 const mappingSelect = createDropdown("global_mapping_config", [
   { value: "default", text: "Default (average)" },
   { value: "automatic", text: "Automatic" },
   { value: "bros", text: "BROS" },
-  { value: "yzzz", text: "yzzz" }
+  { value: "bolt", text: "Bolt" },
+  { value: "fate", text: "Fate" }
 ]);
 
 const fallbackSelect = createDropdown("global_fallback_config", [
   { value: "default", text: "Default (average)" },
   { value: "automatic", text: "Automatic" },
   { value: "bros", text: "BROS" },
-  { value: "yzzz", text: "yzzz" }
+  { value: "bolt", text: "Bolt" },
+  { value: "fate", text: "Fate" }
 ]);
 
 const fallbackEnableSelect = createDropdown("global_fallback_enable", [
@@ -265,25 +262,17 @@ const fallbackEnableSelect = createDropdown("global_fallback_enable", [
   { value: "off", text: "Off" }
 ]);
 
-const tradeOfferLinkSelect = createDropdown("global_tradeoffer_link", [
-  { value: "on", text: "On" },
-  { value: "off", text: "Off" }
-]);
-
 const mappingLeftDiv = createElementWithClass("div", "left");
 const fallbackLeftDiv = createElementWithClass("div", "left");
 const fallbackEnableLeftDiv = createElementWithClass("div", "left");
-const tradeOfferLinkLeftDiv = createElementWithClass("div", "left");
 
 const mappingLabel = createElementWithText("span", "Favorite pricelist");
 const fallbackLabel = createElementWithText("span", "Fallback pricelist");
 const fallbackEnableLabel = createElementWithText("span", "Enable Fallback");
-const tradeOfferLinkLabel = createElementWithText("span", "Trade Offer Link");
 
 const mappingDesc = createElementWithClass("span", "description", "Select pricelist to use by default");
 const fallbackDesc = createElementWithClass("span", "description", "If favorite pricelist price is 0, fallback to pricelist");
 const fallbackEnableDesc = createElementWithClass("span", "description", "Enable fallback feature or not");
-const tradeOfferLinkDesc = createElementWithClass("span", "description", "Add clickable publikc:// link to trade offers in chat");
 
 mappingLeftDiv.appendChild(mappingLabel);
 mappingLeftDiv.appendChild(mappingDesc);
@@ -299,11 +288,6 @@ fallbackEnableLeftDiv.appendChild(fallbackEnableLabel);
 fallbackEnableLeftDiv.appendChild(fallbackEnableDesc);
 optionDivFallbackEnable.appendChild(fallbackEnableLeftDiv);
 optionDivFallbackEnable.appendChild(fallbackEnableSelect);
-
-tradeOfferLinkLeftDiv.appendChild(tradeOfferLinkLabel);
-tradeOfferLinkLeftDiv.appendChild(tradeOfferLinkDesc);
-optionDivTradeOfferLink.appendChild(tradeOfferLinkLeftDiv);
-optionDivTradeOfferLink.appendChild(tradeOfferLinkSelect);
 
 const tooltipContainer = createElementWithClass("div", "tooltip-container-GVL");
 const tooltipIcon = createElementWithClass("span", "info-icon-GVL", "i");
@@ -323,7 +307,6 @@ optionGroup.appendChild(tooltipContainer);
 optionGroup.appendChild(optionDiv);
 optionGroup.appendChild(optionDivFallbackEnable);
 optionGroup.appendChild(optionDivFallback);
-optionGroup.appendChild(optionDivTradeOfferLink);
 
 // ============================================================================
 // Data Fetching
@@ -422,15 +405,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         fallbackSelector.value = cachedFallbackPricelist;
         fallbackSelector.addEventListener("change", () => {
           localStorage.globalFallbackPricelist = fallbackSelector.value;
-          syncLocalStorageCache();
-        });
-      }
-
-      const tradeOfferLinkSelector = document.getElementById("global_tradeoffer_link") as HTMLSelectElement;
-      if (tradeOfferLinkSelector) {
-        tradeOfferLinkSelector.value = cachedTradeOfferLink;
-        tradeOfferLinkSelector.addEventListener("change", () => {
-          localStorage.globalTradeOfferLink = tradeOfferLinkSelector.value;
           syncLocalStorageCache();
         });
       }
@@ -659,13 +633,7 @@ function trimMessage(messageSplit: string[]): string {
       const tradeId = parts[1];
       extractedTradeId = tradeId || "";
 
-      // Generate trade offer URL if enabled
-      let tradeOfferMarker = "";
-      if (cachedTradeOfferLink === "on") {
-        tradeOfferMarker = " %%TRADE_OFFER_LINK%% ";
-      }
-
-      newMessage += " [" + formatNumber(wantedTotal) + "] Status: " + (offeringTotal - wantedTotal > 0 ? '+' : '') + formatNumber(offeringTotal - wantedTotal) + (favorableTrade !== '' ? ' ' + favorableTrade : '') + tradeOfferMarker + " " + prefix + "**" + tradeId + "** ";
+      newMessage += " [" + formatNumber(wantedTotal) + "] Status: " + (offeringTotal - wantedTotal > 0 ? '+' : '') + formatNumber(offeringTotal - wantedTotal) + (favorableTrade !== '' ? ' ' + favorableTrade : '') + " " + prefix + "**" + tradeId + "** ";
     } else {
       if (segment.includes("for your")) {
         isOffering = false;
@@ -694,43 +662,6 @@ function trimMessage(messageSplit: string[]): string {
         }
       }
     }
-  }
-
-  // Replace marker with actual trade offer URL
-  if (cachedTradeOfferLink === "on" && newMessage.includes("%%TRADE_OFFER_LINK%%")) {
-    let tradeStringUrl = "publikc://tradeoffer?";
-    let nonceYour = 1;
-    let nonceFor = 1;
-
-    yourItems.forEach(({name, quantity}) => {
-      if (nonceYour === 1) {
-        tradeStringUrl += `your${nonceYour}=${encodeURIComponent(name)}&yourq${nonceYour}=${quantity}`;
-      } else {
-        tradeStringUrl += `&your${nonceYour}=${encodeURIComponent(name)}&yourq${nonceYour}=${quantity}`;
-      }
-      nonceYour += 1;
-    });
-
-    myItems.forEach(({name, quantity}) => {
-      if (nonceFor === 1 && yourItems.length === 0) {
-        tradeStringUrl += `for${nonceFor}=${encodeURIComponent(name)}&forq${nonceFor}=${quantity}`;
-      } else {
-        tradeStringUrl += `&for${nonceFor}=${encodeURIComponent(name)}&forq${nonceFor}=${quantity}`;
-      }
-      nonceFor += 1;
-    });
-
-    // Add trade ID to URL if available
-    if (extractedTradeId) {
-      tradeStringUrl += `&tradeId=${encodeURIComponent(extractedTradeId)}`;
-    }
-
-    // Store the URL for later DOM injection
-    (window as any).__tradeOfferUrlMap = (window as any).__tradeOfferUrlMap || new Map();
-    const uniqueMarker = `%%TRADE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}%%`;
-    (window as any).__tradeOfferUrlMap.set(uniqueMarker, tradeStringUrl);
-
-    newMessage = newMessage.replace("%%TRADE_OFFER_LINK%%", uniqueMarker);
   }
 
   return newMessage;
@@ -937,6 +868,8 @@ function processInventoryItems(): void {
             rarity = "R";
           } else if (bg.includes("rgb(101, 213, 139)")) {
             rarity = "C";
+          } else if (bg.includes("rgb(0, 0, 0)")) {
+            rarity = "P";
           } else {
             rarity = "U";
           }
@@ -1064,211 +997,6 @@ function stopInventoryProcessing(): void {
 startInventoryProcessing();
 
 // ============================================================================
-// Trade Offer Link DOM Injection
-// ============================================================================
-
-// Store URLs globally for click handler
-(window as any).__tradeOfferUrls = (window as any).__tradeOfferUrls || {};
-
-// MutationObserver to replace markers with actual clickable links
-const tradeOfferObserver = new MutationObserver((mutations) => {
-  for (const mutation of mutations) {
-    if (mutation.type === 'childList') {
-      mutation.addedNodes.forEach((node) => {
-        if (node.nodeType === Node.ELEMENT_NODE) {
-          const element = node as HTMLElement;
-
-          // Check if this is a chat message
-          const textContent = element.textContent || '';
-          if (textContent.includes('%%TRADE_')) {
-            // Skip if already processed
-            if (element.dataset.tradeLinksProcessed === 'true') return;
-
-            const urlMap = (window as any).__tradeOfferUrlMap;
-            if (urlMap) {
-              urlMap.forEach((url: string, marker: string) => {
-                if (textContent.includes(marker)) {
-                  // Generate a simple ID for this trade
-                  const tradeId = marker.replace(/%%TRADE_|%%/g, '');
-
-                  // Store URL globally
-                  (window as any).__tradeOfferUrls[tradeId] = url;
-
-                  // Find all text nodes containing the marker
-                  const walker = document.createTreeWalker(
-                    element,
-                    NodeFilter.SHOW_TEXT,
-                    null
-                  );
-
-                  const nodesToReplace: Array<{node: Text, marker: string, tradeId: string}> = [];
-                  let currentNode = walker.nextNode() as Text | null;
-
-                  while (currentNode) {
-                    if (currentNode.textContent?.includes(marker)) {
-                      nodesToReplace.push({node: currentNode, marker: marker, tradeId: tradeId});
-                    }
-                    currentNode = walker.nextNode() as Text | null;
-                  }
-
-                  // Replace markers with links
-                  nodesToReplace.forEach(({node, marker, tradeId}) => {
-                    const text = node.textContent || '';
-                    const parts = text.split(marker);
-
-                    if (parts.length > 1) {
-                      const fragment = document.createDocumentFragment();
-
-                      parts.forEach((part, index) => {
-                        if (index > 0) {
-                          // Create clickable link with onclick attribute
-                          const link = document.createElement('a');
-                          link.href = 'javascript:void(0)';
-                          link.textContent = '[Open Trade]';
-                          link.style.color = '#4CAF50';
-                          link.style.textDecoration = 'underline';
-                          link.style.cursor = 'pointer';
-                          link.style.fontWeight = 'bold';
-                          link.setAttribute('onclick', `(function(){ var url = window.__tradeOfferUrls['${tradeId}']; if(url) { console.log('[Trade Link] Opening:', url); try { require('electron').shell.openExternal(url); } catch(e) { console.error('[Trade Link] Error:', e); } } })()`);
-                          link.classList.add('trade-offer-link');
-
-                          fragment.appendChild(link);
-                        }
-                        if (part) {
-                          fragment.appendChild(document.createTextNode(part));
-                        }
-                      });
-
-                      node.parentNode?.replaceChild(fragment, node);
-
-                      // Mark element as processed
-                      element.dataset.tradeLinksProcessed = 'true';
-
-                      // Don't delete marker - keep it in case chat re-renders
-                      // urlMap.delete(marker);
-                    }
-                  });
-                }
-              });
-            }
-          }
-        }
-      });
-    }
-  }
-});
-
-// Process existing messages that already contain markers
-function processExistingTradeOfferLinks(): void {
-  const urlMap = (window as any).__tradeOfferUrlMap;
-  if (!urlMap || urlMap.size === 0) return;
-
-  // Find all elements that contain trade offer markers
-  const allElements = document.querySelectorAll('*');
-
-  allElements.forEach((element) => {
-    const textContent = element.textContent || '';
-    if (textContent.includes('%%TRADE_')) {
-      // Skip if already processed
-      const htmlElement = element as HTMLElement;
-      if (htmlElement.dataset.tradeLinksProcessed === 'true') return;
-
-      urlMap.forEach((url: string, marker: string) => {
-        if (textContent.includes(marker)) {
-          // Generate a simple ID for this trade
-          const tradeId = marker.replace(/%%TRADE_|%%/g, '');
-
-          // Store URL globally
-          (window as any).__tradeOfferUrls[tradeId] = url;
-
-          // Find all text nodes containing the marker
-          const walker = document.createTreeWalker(
-            htmlElement,
-            NodeFilter.SHOW_TEXT,
-            null
-          );
-
-          const nodesToReplace: Array<{node: Text, marker: string, tradeId: string}> = [];
-          let currentNode = walker.nextNode() as Text | null;
-
-          while (currentNode) {
-            if (currentNode.textContent?.includes(marker)) {
-              nodesToReplace.push({node: currentNode, marker: marker, tradeId: tradeId});
-            }
-            currentNode = walker.nextNode() as Text | null;
-          }
-
-          // Replace markers with links
-          nodesToReplace.forEach(({node, marker, tradeId}) => {
-            const text = node.textContent || '';
-            const parts = text.split(marker);
-
-            if (parts.length > 1) {
-              const fragment = document.createDocumentFragment();
-
-              parts.forEach((part, index) => {
-                if (index > 0) {
-                  // Create clickable link with onclick attribute
-                  const link = document.createElement('a');
-                  link.href = 'javascript:void(0)';
-                  link.textContent = '[Open Trade]';
-                  link.style.color = '#4CAF50';
-                  link.style.textDecoration = 'underline';
-                  link.style.cursor = 'pointer';
-                  link.style.fontWeight = 'bold';
-                  link.setAttribute('onclick', `(function(){ var url = window.__tradeOfferUrls['${tradeId}']; if(url) { console.log('[Trade Link] Opening:', url); try { require('electron').shell.openExternal(url); } catch(e) { console.error('[Trade Link] Error:', e); } } })()`);
-                  link.classList.add('trade-offer-link');
-
-                  fragment.appendChild(link);
-                }
-                if (part) {
-                  fragment.appendChild(document.createTextNode(part));
-                }
-              });
-
-              node.parentNode?.replaceChild(fragment, node);
-
-              // Mark element as processed
-              htmlElement.dataset.tradeLinksProcessed = 'true';
-            }
-          });
-        }
-      });
-    }
-  });
-
-  console.log('[Trade Offer Link] Processed existing messages');
-}
-
-// Start observing chat messages
-function startTradeOfferLinkObserver(): void {
-  // Wait for chat container to exist
-  const checkChatContainer = setInterval(() => {
-    const chatContainer = document.querySelector('.chat-messages, .messages, [class*="chat"]');
-    if (chatContainer) {
-      clearInterval(checkChatContainer);
-
-      // Process any existing messages first
-      processExistingTradeOfferLinks();
-
-      // Then start observing for new messages
-      tradeOfferObserver.observe(chatContainer, {
-        childList: true,
-        subtree: true
-      });
-      console.log('[Trade Offer Link] Observer started');
-    }
-  }, 1000);
-}
-
-// Start observer when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', startTradeOfferLinkObserver);
-} else {
-  startTradeOfferLinkObserver();
-}
-
-// ============================================================================
 // Global Cleanup
 // ============================================================================
 
@@ -1276,7 +1004,6 @@ if (document.readyState === 'loading') {
 (window as any).globalChatStatsCleanup = function(): void {
   stopPriceListUpdate();
   stopInventoryProcessing();
-  tradeOfferObserver.disconnect();
   // Note: WebSocket listeners auto-cleanup, no manual cleanup needed
 };
 

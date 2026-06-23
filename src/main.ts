@@ -4,9 +4,9 @@ import { initGame } from "./windows/game";
 //import { initSplash } from "./windows/splash";
 import { initResourceSwapper } from "./addons/swapper";
 
-app.on("ready", () => {
+app.on("ready", async () => {
   //initSplash();
-  initResourceSwapper();
+  await initResourceSwapper();
   initGame();
 });
 

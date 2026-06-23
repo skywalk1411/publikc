@@ -2,8 +2,12 @@
   rel="stylesheet"
   href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
 />
-<div class="menu" data-theme="dark" data-active="true">
+<div class="menu" data-theme="dark" data-active="false">
   <aside class="sidebar">
+    <div class="menu-drag" title="Drag to move the menu">
+      <i class="fas fa-grip-vertical"></i>
+      <span>Publikc Client</span>
+    </div>
     <div class="search-input">
       <i class="fas fa-search"></i>
       <input type="text" class="juice search" placeholder="Search..." />
@@ -28,6 +32,14 @@
       <div data-tab="client" class="juice tab">
         <i class="fas fa-cog"></i>
         Client
+      </div>
+      <div data-tab="swapper" class="juice tab">
+        <i class="fas fa-paint-roller"></i>
+        Swapper
+      </div>
+      <div data-tab="profile" class="juice tab">
+        <i class="fas fa-id-badge"></i>
+        Profile
       </div>
       <div data-tab="scripts" class="juice tab">
         <i class="fas fa-file-code"></i>
@@ -167,6 +179,53 @@
           </div>
         </div>
       </div>
+      <div class="option-group">
+        <div class="option">
+          <div class="left">
+            <span>Client Watermark</span>
+            <span class="description"
+              >Show a custom text watermark over the screen</span
+            >
+          </div>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="watermark_enabled"
+              data-setting="watermark_enabled"
+            />
+            <label for="watermark_enabled"></label>
+          </div>
+        </div>
+        <div class="option">
+          <span>Watermark Text</span>
+          <input
+            type="text"
+            placeholder="publikc"
+            data-setting="watermark_text"
+          />
+        </div>
+        <div class="option">
+          <span>Watermark Color</span>
+          <input type="color" data-setting="watermark_color" />
+        </div>
+        <div class="option">
+          <div class="left">
+            <span>Watermark Size</span>
+            <span class="description">Text size in rem</span>
+          </div>
+          <div class="range-wrap">
+            <input
+              type="range"
+              min="0.5"
+              max="6"
+              step="0.1"
+              class="range"
+              data-setting="watermark_size"
+            />
+            <span class="range-value" data-unit="rem"></span>
+          </div>
+        </div>
+      </div>
     </div>
     <div id="game-options" class="juice options">
       <div class="option-group">
@@ -208,6 +267,282 @@
               data-setting="kd_indicator"
             />
             <label for="kd_indicator"></label>
+          </div>
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="option">
+          <div class="left">
+            <span>Permanent Scoreboard</span>
+            <span class="description"
+              >Keep a compact scoreboard pinned in the corner during matches</span
+            >
+          </div>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="perm_tablist"
+              data-setting="perm_tablist"
+            />
+            <label for="perm_tablist"></label>
+          </div>
+        </div>
+        <div class="option">
+          <div class="left">
+            <span>Hide Killfeed Text</span>
+            <span class="description"
+              >Remove the achievement / kill popups above the crosshair</span
+            >
+          </div>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="hide_kill_text"
+              data-setting="hide_kill_text"
+            />
+            <label for="hide_kill_text"></label>
+          </div>
+        </div>
+        <div class="option">
+          <div class="left">
+            <span>Friend Spectate Button</span>
+            <span class="description"
+              >Add a one-click spectate eye to friends in a match</span
+            >
+          </div>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="spectate_button"
+              data-setting="spectate_button"
+            />
+            <label for="spectate_button"></label>
+          </div>
+        </div>
+        <div class="option">
+          <div class="left">
+            <span>Show Trade Buttons</span>
+            <span class="description"
+              >Add Offer, Bump and Cancel buttons above global chat</span
+            >
+          </div>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="show_trade_buttons"
+              data-setting="show_trade_buttons"
+            />
+            <label for="show_trade_buttons"></label>
+          </div>
+        </div>
+        <div class="option">
+          <div class="left">
+            <span>Accept Trades on Click</span>
+            <span class="description"
+              >Click a trade message to auto-fill accept and confirm</span
+            >
+          </div>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="accept_on_click"
+              data-setting="accept_on_click"
+            />
+            <label for="accept_on_click"></label>
+          </div>
+        </div>
+        <div class="option">
+          <div class="left">
+            <span>Colored Killfeed</span>
+            <span class="description"
+              >Tint killfeed entries by the killer's team color</span
+            >
+          </div>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="colored_killfeed"
+              data-setting="colored_killfeed"
+            />
+            <label for="colored_killfeed"></label>
+          </div>
+        </div>
+        <div class="option">
+          <div class="left">
+            <span>Hide Team-State Overlay</span>
+            <span class="description"
+              >Hide the team status panel while spectating</span
+            >
+          </div>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="hide_teamstate_overlay"
+              data-setting="hide_teamstate_overlay"
+            />
+            <label for="hide_teamstate_overlay"></label>
+          </div>
+        </div>
+        <div class="option">
+          <div class="left">
+            <span>Chat Height</span>
+            <span class="description"
+              >Raise the chat box so more messages stay on screen</span
+            >
+          </div>
+          <div class="range-wrap">
+            <input
+              type="range"
+              min="0"
+              max="20"
+              step="0.25"
+              class="range"
+              data-setting="chat_height"
+            />
+            <span class="range-value" data-unit="em"></span>
+          </div>
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="option">
+          <div class="left">
+            <span>Weapon Model</span>
+            <span class="description"
+              >Resize and reposition your first-person weapon</span
+            >
+          </div>
+        </div>
+        <div class="option">
+          <span>Weapon Size</span>
+          <div class="range-wrap">
+            <input
+              type="range"
+              min="0.15"
+              max="2"
+              step="0.05"
+              class="range"
+              data-setting="weapon_size"
+            />
+            <span class="range-value" data-unit="x"></span>
+          </div>
+        </div>
+        <div class="option">
+          <span>Offset X</span>
+          <div class="range-wrap">
+            <input
+              type="range"
+              min="-0.5"
+              max="0.5"
+              step="0.01"
+              class="range"
+              data-setting="weapon_offset_x"
+            />
+            <span class="range-value"></span>
+          </div>
+        </div>
+        <div class="option">
+          <span>Offset Y</span>
+          <div class="range-wrap">
+            <input
+              type="range"
+              min="-0.5"
+              max="0.5"
+              step="0.01"
+              class="range"
+              data-setting="weapon_offset_y"
+            />
+            <span class="range-value"></span>
+          </div>
+        </div>
+        <div class="option">
+          <span>Offset Z</span>
+          <div class="range-wrap">
+            <input
+              type="range"
+              min="-0.5"
+              max="0.5"
+              step="0.01"
+              class="range"
+              data-setting="weapon_offset_z"
+            />
+            <span class="range-value"></span>
+          </div>
+        </div>
+        <div class="option">
+          <div class="left">
+            <span>ADS Power</span>
+            <span class="description"
+              >Adjust the zoom strength when aiming down sights</span
+            >
+          </div>
+          <div class="range-wrap">
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              class="range"
+              data-setting="ads_power"
+            />
+            <span class="range-value"></span>
+          </div>
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="option">
+          <div class="left">
+            <span>Solid Weapon Color</span>
+            <span class="description">Paint the weapon a flat color</span>
+          </div>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="weapon_color"
+              data-setting="weapon_color"
+            />
+            <label for="weapon_color"></label>
+          </div>
+        </div>
+        <div class="option">
+          <span>Weapon Color</span>
+          <input type="color" data-setting="weapon_color_hex" />
+        </div>
+        <div class="option">
+          <div class="left">
+            <span>RGB Cycle</span>
+            <span class="description">Cycle the weapon color through the rainbow</span>
+          </div>
+          <div class="checkbox">
+            <input type="checkbox" id="weapon_rgb" data-setting="weapon_rgb" />
+            <label for="weapon_rgb"></label>
+          </div>
+        </div>
+        <div class="option">
+          <div class="left">
+            <span>Wireframe</span>
+            <span class="description">Render the weapon as a wireframe</span>
+          </div>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="weapon_wireframe"
+              data-setting="weapon_wireframe"
+            />
+            <label for="weapon_wireframe"></label>
+          </div>
+        </div>
+        <div class="option">
+          <div class="left">
+            <span>Include Arms</span>
+            <span class="description">Apply color / wireframe to the arms too</span>
+          </div>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="include_arms"
+              data-setting="include_arms"
+            />
+            <label for="include_arms"></label>
           </div>
         </div>
       </div>
@@ -367,7 +702,107 @@
             <option value="catppuccin-mocha">Catppuccin Mocha</option>
             <option value="flexoki">Flexoki</option>
             <option value="legacy">Legacy</option>
+            <option value="custom">Custom</option>
           </select>
+        </div>
+        <div class="option">
+          <div class="left">
+            <span>Menu Opacity</span>
+            <span class="description">Make the menu background see-through</span>
+          </div>
+          <div class="range-wrap">
+            <input
+              type="range"
+              min="20"
+              max="100"
+              class="range"
+              data-setting="menu_opacity"
+            />
+            <span class="range-value" data-unit="%"></span>
+          </div>
+        </div>
+      </div>
+      <div id="custom-theme-options" class="option-group">
+        <div class="option">
+          <div class="left">
+            <span>Background Color</span>
+            <span class="description">Base color of the menu</span>
+          </div>
+          <input type="color" data-setting="custom_theme_bg" />
+        </div>
+        <div class="option">
+          <div class="left">
+            <span>Text Color</span>
+            <span class="description">Color of labels and values</span>
+          </div>
+          <input type="color" data-setting="custom_theme_text" />
+        </div>
+        <div class="option">
+          <div class="left">
+            <span>Accent Color</span>
+            <span class="description">Toggles, sliders and highlights</span>
+          </div>
+          <input type="color" data-setting="custom_theme_accent" />
+        </div>
+        <div class="option">
+          <div class="left">
+            <span>Border Color</span>
+            <span class="description">Outlines and separators</span>
+          </div>
+          <input type="color" data-setting="custom_theme_border" />
+        </div>
+        <div class="option">
+          <div class="left">
+            <span>Danger Color</span>
+            <span class="description">Destructive actions like reset</span>
+          </div>
+          <input type="color" data-setting="custom_theme_danger" />
+        </div>
+        <div class="option">
+          <span>Menu Font</span>
+          <select data-setting="custom_theme_font">
+            <option value="satoshi">Satoshi</option>
+            <option value="inter">Inter</option>
+            <option value="poppins">Poppins</option>
+            <option value="montserrat">Montserrat</option>
+            <option value="jetbrains-mono">JetBrains Mono</option>
+            <option value="press-start-2p">Press Start 2P</option>
+            <option value="custom">Uploaded font</option>
+          </select>
+        </div>
+        <div class="option">
+          <div class="left">
+            <span>Custom Font File</span>
+            <span class="description" id="custom-font-status">None uploaded</span>
+          </div>
+          <div class="font-buttons">
+            <button id="upload-custom-font" class="juice-button">
+              <span class="text">Upload</span>
+              <div class="custom-border"></div>
+            </button>
+            <button id="remove-custom-font" class="juice-button">
+              <span class="text">Remove</span>
+              <div class="custom-border"></div>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="option">
+          <div class="left requires-refresh">
+            <span>Always Show In-Game Menu</span>
+            <span class="description"
+              >Keep the settings button reachable during matches</span
+            >
+          </div>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="always_show_ingame_menu"
+              data-setting="always_show_ingame_menu"
+            />
+            <label for="always_show_ingame_menu"></label>
+          </div>
         </div>
       </div>
       <div class="option-group">
@@ -427,6 +862,187 @@
         </div>
       </div>
     </div>
+    <div id="swapper-options" class="juice options">
+      <div class="option-group">
+        <div class="option">
+          <div class="left requires-restart">
+            <span>Skin Changer</span>
+            <span class="description"
+              >Replace a weapon texture with your own image</span
+            >
+          </div>
+        </div>
+        <div class="option">
+          <span>Weapon</span>
+          <select id="skin-select">
+            <option value="revolver">Revolver</option>
+            <option value="bayonet">Bayonet</option>
+            <option value="tomahawk">Tomahawk</option>
+            <option value="scar">SCAR</option>
+            <option value="shark">Shark</option>
+            <option value="weatie">Weatie</option>
+            <option value="vita">VITA</option>
+            <option value="ar9">AR-9</option>
+            <option value="lar">LAR</option>
+            <option value="m60">M60</option>
+            <option value="mac10">MAC-10</option>
+          </select>
+        </div>
+        <div class="option">
+          <div class="left">
+            <span>Upload Image</span>
+            <span class="description">Accepts .webp, .png, .jpg, .jpeg</span>
+          </div>
+          <input
+            type="file"
+            id="skin-file"
+            accept=".webp,.png,.jpg,.jpeg"
+            hidden
+          />
+          <div class="swapper-dropzone" id="upload-skin">
+            <i class="fas fa-cloud-arrow-up"></i>
+            <span>Click or drag &amp; drop</span>
+          </div>
+        </div>
+        <div class="option">
+          <span>Or Load From URL</span>
+          <input type="text" id="skin-url" placeholder="https://.../image.png" />
+        </div>
+        <div class="option swapper-preview-row">
+          <img id="skin-preview" class="swapper-preview" />
+        </div>
+        <div class="option">
+          <button id="save-skin" class="juice-button">
+            <span class="text">Save Skin</span>
+            <div class="custom-border"></div>
+          </button>
+          <button id="open-skins-folder" class="juice-button">
+            <span class="text">Open Skins Folder</span>
+            <div class="custom-border"></div>
+          </button>
+        </div>
+        <div class="option custom">
+          <span class="swapper-status" id="skin-status"></span>
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="option">
+          <div class="left requires-restart">
+            <span>Sound Swapper</span>
+            <span class="description"
+              >Replace a game sound; volume is baked in on save</span
+            >
+          </div>
+        </div>
+        <div class="option">
+          <span>Sound</span>
+          <select id="sound-select">
+            <option value="dash">Dash</option>
+            <option value="reload">Reload</option>
+            <option value="hit">Hit</option>
+            <option value="kill1">Kill 1</option>
+            <option value="kill2">Kill 2</option>
+            <option value="kill3">Kill 3</option>
+            <option value="kill4">Kill 4</option>
+            <option value="kill5">Kill 5</option>
+            <option value="wound1">Wound 1</option>
+            <option value="wound2">Wound 2</option>
+            <option value="userevolver">Use Revolver</option>
+            <option value="useknife">Use Bayonet / Tomahawk</option>
+            <option value="usescar">Use SCAR</option>
+            <option value="useshark">Use Shark</option>
+            <option value="useweatie">Use Weatie</option>
+            <option value="usevita">Use VITA</option>
+            <option value="usear9">Use AR-9</option>
+            <option value="uselar">Use LAR</option>
+            <option value="usem60">Use M60</option>
+            <option value="usemac10">Use MAC-10</option>
+            <option value="stepdirt">Step on Dirt</option>
+            <option value="stepgrass">Step on Grass</option>
+            <option value="stepmud">Step on Mud</option>
+            <option value="stepsand">Step on Sand</option>
+            <option value="stepstone">Step on Stone</option>
+          </select>
+        </div>
+        <div class="option">
+          <div class="left">
+            <span>Upload Audio</span>
+            <span class="description">Any audio file; converted on save</span>
+          </div>
+          <input type="file" id="sound-file" accept="audio/*" hidden />
+          <div class="swapper-dropzone" id="upload-sound">
+            <i class="fas fa-cloud-arrow-up"></i>
+            <span>Click or drag &amp; drop</span>
+          </div>
+        </div>
+        <div class="option swapper-preview-row">
+          <div id="sound-preview" class="sound-preview">
+            <div id="sound-play" class="circle-btn"></div>
+            <div id="sound-volume-icon" class="circle-btn"></div>
+            <input
+              type="range"
+              id="sound-volume"
+              class="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value="1"
+            />
+            <span id="sound-filename" class="sound-filename"></span>
+          </div>
+        </div>
+        <div class="option">
+          <button id="save-sound" class="juice-button">
+            <span class="text">Save Sound</span>
+            <div class="custom-border"></div>
+          </button>
+          <button id="open-sounds-folder" class="juice-button">
+            <span class="text">Open Sounds Folder</span>
+            <div class="custom-border"></div>
+          </button>
+        </div>
+        <div class="option custom">
+          <span class="swapper-status" id="sound-status"></span>
+        </div>
+      </div>
+    </div>
+    <div id="profile-options" class="juice options">
+      <div class="option-group">
+        <div class="option">
+          <div class="left requires-refresh">
+            <span>Local Name Customization</span>
+            <span class="description"
+              >Apply your own gradient &amp; badges to your name</span
+            >
+          </div>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="local_customizations"
+              data-setting="local_customizations"
+            />
+            <label for="local_customizations"></label>
+          </div>
+        </div>
+        <div class="option">
+          <div class="left">
+            <span>Clan Customizations</span>
+            <span class="description">Apply gradients to clan tags</span>
+          </div>
+          <div class="checkbox">
+            <input
+              type="checkbox"
+              id="clancustomizations"
+              data-setting="clancustomizations"
+            />
+            <label for="clancustomizations"></label>
+          </div>
+        </div>
+      </div>
+      <div class="option-group">
+        <div id="local-customizations"></div>
+      </div>
+    </div>
     <div id="scripts-options" class="juice options">
       <div class="option-group">
         <div class="option">
@@ -436,16 +1052,6 @@
           </div>
           <select id="opener">
             <option value="none">None</option>
-            <option value="Chest_Golden">Golden</option>
-            <option value="Chest_Ice">Ice</option>
-            <option value="Chest_Wood">Wood</option>
-            <option value="Chest_All">All Chests</option>
-            <option value="Card_Cold">Cold</option>
-            <option value="Card_Girlsband">Girls band</option>
-            <option value="Card_Party">Party</option>
-            <option value="Card_Soldiers">Soldiers</option>
-            <option value="Card_Periodic">Periodic</option>
-            <option value="Card_All">All Cards</option>
           </select>
         </div>
       </div>
@@ -529,7 +1135,7 @@
             <div class="about-more">
               <div></div>
               <div class="about-buttons">
-                <a href="https://kirka.lukeskywalk.com" class="about-kirkatools alt">
+                <a href="https://kirka.lukeskywalk.com" class="about-kirkatools alt" target="_blank">
                   <i class="fas fa-arrow-up-right-from-square"></i>
                   <p>Check it out!</p>
                   <div class="custom-border"></div>
@@ -552,6 +1158,12 @@
           <p>- Error430 for optimizations</p>
           <p>
             - <a href="https://github.com/robertpakalns" target="_blank">robertpakalns</a> for various bug fixes, optimizations, and tweaks
+          </p>
+          <p>
+            - <a href="https://github.com/zVipexx/dawn-client" target="_blank">Vipex</a> for various features from Dawn client.
+          </p>
+          <p>
+            - <a href="https://github.com/OBS-Akuma/smudgy-client" target="_blank">Akuma</a> and <a href="https://github.com/OBS-Akuma/smudgy-client" target="_blank">d4ym1an</a> for various features from smudgy client.
           </p>
         </div>
       </div>

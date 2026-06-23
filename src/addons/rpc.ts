@@ -16,7 +16,7 @@ class DiscordRPC {
   private client: rpc.Client;
 
   constructor() {
-    this.clientId = "1233829658345078846";
+    this.clientId = "1512277835014995979";
     this.startTimestamp = Date.now();
     this.client = new rpc.Client({ transport: "ipc" });
     this.init();
@@ -40,6 +40,10 @@ class DiscordRPC {
     const activity = this.defaultActivity();
     activity.state = state;
     this.setActivity(activity);
+  }
+
+  destroy(): void {
+    this.client.destroy().catch(() => {});
   }
 
   private defaultActivity(): Activity {

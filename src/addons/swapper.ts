@@ -3,7 +3,12 @@ import * as path from "path";
 import * as fs from "fs";
 import * as url from "url";
 
-export function initResourceSwapper(): void {
+const fileExtRegex = /\/[^\/]+\.(?:[a-zA-Z0-9]+)\*/i;
+const urlStripRegex = /https|http|(\?.*)|(#.*)|_/gi;
+const starOrUnderscoreRegex = /\*|_/g;
+const underscoreRegex = /_/g;
+
+export async function initResourceSwapper(): Promise<void> {
   protocol.registerFileProtocol("publikc", (request, callback) =>
     callback({ path: request.url.replace("publikc://", "") })
   );
@@ -24,13 +29,9 @@ export function initResourceSwapper(): void {
   const folder_regex = new RegExp(folder_regex_generator, "");
 
   try {
-    if (!fs.existsSync(assetsFolder))
-      fs.mkdirSync(assetsFolder, { recursive: true });
+    await fs.promises.mkdir(assetsFolder, { recursive: true });
     for (let i = 0; i < folders.length; i++) {
-      const folder = folders[i];
-      const folderPath = path.join(assetsFolder, folder);
-      if (!fs.existsSync(folderPath))
-        fs.mkdirSync(folderPath, { recursive: true });
+      await fs.promises.mkdir(path.join(assetsFolder, folders[i]), { recursive: true });
     }
   } catch {}
 
@@ -50,27 +51,29 @@ export function initResourceSwapper(): void {
     "kirka.io",
   ];
 
-  const allFilesSync = (dir: string): void => {
-    const files = fs.readdirSync(dir);
+  const allFiles = async (dir: string): Promise<void> => {
+    const files = await fs.promises.readdir(dir);
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const filePath = path.join(dir, file);
-      if (fs.statSync(filePath).isDirectory()) allFilesSync(filePath);
-      else {
+      const stat = await fs.promises.stat(filePath);
+      if (stat.isDirectory()) {
+        await allFiles(filePath);
+      } else {
         const useAssets = folder_regex.test(filePath);
         if (!useAssets) continue;
 
         for (let j = 0; j < proxyUrls.length; j++) {
           const proxy = proxyUrls[j];
           const kirk = `*://${proxy}${filePath.replace(SWAP_FOLDER, "").replace(/\\/g, "/")}*`;
-          const origfilterurl = kirk.match(/\/[^\/]+\.(?:[a-zA-Z0-9]+)\*/gi)?.[0];
+          const origfilterurl = kirk.match(fileExtRegex)?.[0];
           if (!origfilterurl) continue;
 
-          let filterurl = origfilterurl.replace(/\_/g, "");
+          let filterurl = origfilterurl.replace(underscoreRegex, "");
           filterurl = filterurl.replace("/", "/*");
           filterurl = filterurl.replace(".", "*.*");
           swap.filter.urls.push(kirk.replace(origfilterurl, filterurl));
-          swap.files[kirk.replace(/\*|_/g, "")] = url.format({
+          swap.files[kirk.replace(starOrUnderscoreRegex, "")] = url.format({
             pathname: filePath,
             protocol: "",
             slashes: false,
@@ -80,7 +83,7 @@ export function initResourceSwapper(): void {
     }
   };
 
-  allFilesSync(SWAP_FOLDER);
+  await allFiles(SWAP_FOLDER);
 
   if (swap.filter.urls.length) {
     session.defaultSession.webRequest.onBeforeRequest(
@@ -88,7 +91,7 @@ export function initResourceSwapper(): void {
       (details, callback) => {
         const redirect =
           "publikc://" +
-          (swap.files[details.url.replace(/https|http|(\?.*)|(#.*)|\_/gi, "")] ||
+          (swap.files[details.url.replace(urlStripRegex, "")] ||
             details.url);
         callback({ cancel: false, redirectURL: redirect });
       }

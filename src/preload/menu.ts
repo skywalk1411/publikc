@@ -12,6 +12,7 @@ class Menu {
   private localStorage: Storage;
   private menuToggle: HTMLElement;
   private tabToContentMap: { [key: string]: HTMLElement };
+  private customThemeStyleEl: HTMLStyleElement | null = null;
 
   constructor() {
     this.settings = ipcRenderer.sendSync("get-settings");
@@ -31,6 +32,8 @@ class Menu {
       game: this.menu.querySelector("#game-options")!,
       performance: this.menu.querySelector("#performance-options")!,
       client: this.menu.querySelector("#client-options")!,
+      swapper: this.menu.querySelector("#swapper-options")!,
+      profile: this.menu.querySelector("#profile-options")!,
       scripts: this.menu.querySelector("#scripts-options")!,
       about: this.menu.querySelector("#about-client")!,
     };
@@ -52,6 +55,9 @@ class Menu {
   init(): void {
     this.setVersion();
     this.setUser();
+    // The logged-in user resolves asynchronously (and may only have a shortId at
+    // first, then gain a name) — refresh the label whenever it updates.
+    document.addEventListener("publikc-current-user-resolved", () => this.setUser());
     this.setKeybind();
     this.setTheme();
     this.handleKeyEvents();
@@ -59,10 +65,14 @@ class Menu {
     this.handleMenuKeybindChange();
     this.handleMenuInputChanges();
     this.handleMenuSelectChanges();
+    this.handleRangeValues();
     this.handleTabChanges();
     this.handleDropdowns();
     this.handleSearch();
     this.handleButtons();
+    this.handleCustomTheme();
+    this.handleDrag();
+    this.handleResize();
     this.localStorage.getItem("juice-menu-tab")
       ? this.handleTabChange(
           this.menu.querySelector(
@@ -81,8 +91,11 @@ class Menu {
 
   private setUser(): void {
     const user = JSON.parse(this.localStorage.getItem("current-user") || "null");
-    if (user) {
-      (this.menu.querySelector(".user") as HTMLElement).textContent = `${user.name}#${user.shortId}`;
+    const el = this.menu.querySelector(".user") as HTMLElement | null;
+    if (user && user.shortId && el) {
+      // `current-user` may carry only a shortId (DOM-resolved before the name is
+      // known), so avoid rendering "undefined#…" when the name is missing.
+      el.textContent = user.name ? `${user.name}#${user.shortId}` : `#${user.shortId}`;
     }
   }
 
@@ -90,6 +103,10 @@ class Menu {
     (this.menu.querySelector(
       ".keybind"
     ) as HTMLElement).textContent = `Press ${this.settings.menu_keybind} to toggle menu`;
+    if (!window.location.href.startsWith(this.settings.base_url)) {
+      this.menuToggle.setAttribute("data-active", "false");
+      return;
+    }
     if (!this.localStorage.getItem("juice-menu")) {
       this.localStorage.setItem(
         "juice-menu",
@@ -104,9 +121,269 @@ class Menu {
   }
 
   private setTheme(): void {
-    this.menu
-      .querySelector(".menu")!
-      .setAttribute("data-theme", this.settings.menu_theme);
+    const menuEl = this.menu.querySelector(".menu") as HTMLElement;
+    menuEl.setAttribute("data-theme", this.settings.menu_theme);
+
+    const customPanel = this.menu.querySelector(
+      "#custom-theme-options"
+    ) as HTMLElement | null;
+    if (customPanel) {
+      customPanel.style.display =
+        this.settings.menu_theme === "custom" ? "flex" : "none";
+    }
+
+    this.applyCustomTheme();
+    this.applyMenuOpacity();
+  }
+
+  // Translates the menu_opacity percentage into the alpha channel the menu
+  // background reads through the `--menu-bg-alpha` custom property.
+  private applyMenuOpacity(): void {
+    const menuEl = this.menu.querySelector(".menu") as HTMLElement;
+    if (!menuEl) return;
+    const pct = parseInt(this.settings.menu_opacity, 10);
+    const alpha = (isNaN(pct) ? 100 : pct) / 100;
+    menuEl.style.setProperty("--menu-bg-alpha", String(alpha));
+  }
+
+  // When the "custom" theme is active, derive the menu's CSS color variables
+  // from the user's color pickers; otherwise strip the inline overrides so the
+  // chosen preset theme takes over again.
+  private applyCustomTheme(): void {
+    const menuEl = this.menu.querySelector(".menu") as HTMLElement;
+    if (!menuEl) return;
+
+    const overrideProps = [
+      "--dark",
+      "--light",
+      "--orange",
+      "--green",
+      "--blue",
+      "--red",
+      "--hover-dark",
+      "--hover-light",
+      "--border",
+      "--border-active",
+      "--opacity-half",
+      "--opacity-quarter",
+    ];
+
+    if (this.settings.menu_theme !== "custom") {
+      for (let i = 0; i < overrideProps.length; i++) {
+        menuEl.style.removeProperty(overrideProps[i]);
+      }
+      menuEl.style.removeProperty("font-family");
+      if (this.customThemeStyleEl) this.customThemeStyleEl.innerHTML = "";
+      return;
+    }
+
+    const toRgb = (hex: string): [number, number, number] => {
+      const clean = (hex || "#000000").replace("#", "");
+      return [
+        parseInt(clean.substring(0, 2), 16) || 0,
+        parseInt(clean.substring(2, 4), 16) || 0,
+        parseInt(clean.substring(4, 6), 16) || 0,
+      ];
+    };
+
+    const [bgR, bgG, bgB] = toRgb(this.settings.custom_theme_bg);
+    const [txR, txG, txB] = toRgb(this.settings.custom_theme_text);
+    const [acR, acG, acB] = toRgb(this.settings.custom_theme_accent);
+    const [boR, boG, boB] = toRgb(this.settings.custom_theme_border);
+    const [daR, daG, daB] = toRgb(this.settings.custom_theme_danger);
+
+    // Nudge the hover-dark tone a touch toward the text color for contrast.
+    const blend = (a: number, b: number): number => Math.round(a + (b - a) * 0.06);
+    const hoverDark = `${blend(bgR, txR)}, ${blend(bgG, txG)}, ${blend(bgB, txB)}`;
+
+    const set = (prop: string, value: string): void =>
+      menuEl.style.setProperty(prop, value);
+
+    set("--dark", `${bgR}, ${bgG}, ${bgB}`);
+    set("--light", `${txR}, ${txG}, ${txB}`);
+    set("--orange", `${acR}, ${acG}, ${acB}`);
+    set("--green", `${acR}, ${acG}, ${acB}`);
+    set("--blue", `${acR}, ${acG}, ${acB}`);
+    set("--red", `${daR}, ${daG}, ${daB}`);
+    set("--hover-dark", hoverDark);
+    set("--hover-light", `${txR}, ${txG}, ${txB}, 0.05`);
+    set("--border", `${boR}, ${boG}, ${boB}, 0.15`);
+    set("--border-active", `${boR}, ${boG}, ${boB}, 0.25`);
+    set("--opacity-half", `${txR}, ${txG}, ${txB}, 0.5`);
+    set("--opacity-quarter", `${txR}, ${txG}, ${txB}, 0.25`);
+
+    const fontFamily = this.resolveCustomFontFamily();
+    menuEl.style.fontFamily = `"${fontFamily}", sans-serif`;
+    this.refreshCustomFontStyle(fontFamily);
+  }
+
+  private resolveCustomFontFamily(): string {
+    const builtIn: { [key: string]: string } = {
+      satoshi: "Satoshi",
+      inter: "Inter",
+      poppins: "Poppins",
+      montserrat: "Montserrat",
+      "jetbrains-mono": "JetBrains Mono",
+      "press-start-2p": "Press Start 2P",
+    };
+
+    if (this.settings.custom_theme_font === "custom") {
+      const fontPath = this.settings.custom_theme_custom_font;
+      if (fontPath) return path.basename(fontPath).replace(/\.[^.]+$/, "");
+      return "Satoshi";
+    }
+    return builtIn[this.settings.custom_theme_font] || "Satoshi";
+  }
+
+  // Maintains a <style> element holding the @font-face for any uploaded font
+  // plus the rule that applies the resolved font across the custom-themed menu.
+  private refreshCustomFontStyle(fontFamily: string): void {
+    if (!this.customThemeStyleEl) {
+      this.customThemeStyleEl = document.createElement("style");
+      this.customThemeStyleEl.id = "juice-custom-font";
+      document.head.appendChild(this.customThemeStyleEl);
+    }
+
+    const rules: string[] = [];
+    const fontPath = this.settings.custom_theme_custom_font;
+    if (fontPath) {
+      const family = path.basename(fontPath).replace(/\.[^.]+$/, "");
+      const url = "file:///" + fontPath.replace(/\\/g, "/");
+      rules.push(`@font-face { font-family: "${family}"; src: url("${url}"); }`);
+    }
+
+    rules.push(
+      `.menu[data-theme="custom"], .menu[data-theme="custom"] input, ` +
+      `.menu[data-theme="custom"] textarea, .menu[data-theme="custom"] select, ` +
+      `.menu[data-theme="custom"] button, .menu[data-theme="custom"] .change-keybind ` +
+      `{ font-family: "${fontFamily}", sans-serif !important; }`
+    );
+
+    this.customThemeStyleEl.innerHTML = rules.join("\n");
+  }
+
+  private handleCustomTheme(): void {
+    const status = this.menu.querySelector("#custom-font-status") as HTMLElement | null;
+    const uploadBtn = this.menu.querySelector("#upload-custom-font") as HTMLElement | null;
+    const removeBtn = this.menu.querySelector("#remove-custom-font") as HTMLElement | null;
+    if (!status || !uploadBtn || !removeBtn) return;
+
+    const refreshStatus = (): void => {
+      const fontPath = this.settings.custom_theme_custom_font;
+      if (fontPath) {
+        status.textContent = path.basename(fontPath);
+        removeBtn.style.display = "";
+      } else {
+        status.textContent = "None uploaded";
+        removeBtn.style.display = "none";
+      }
+    };
+
+    refreshStatus();
+
+    const persistFont = (value: string): void => {
+      this.settings.custom_theme_custom_font = value;
+      ipcRenderer.send("update-setting", "custom_theme_custom_font", value);
+      const event = new CustomEvent("juice-settings-changed", {
+        detail: { setting: "custom_theme_custom_font", value },
+      });
+      document.dispatchEvent(event);
+      refreshStatus();
+      this.applyCustomTheme();
+    };
+
+    uploadBtn.addEventListener("click", async () => {
+      const fontPath = await ipcRenderer.invoke("upload-custom-font");
+      if (!fontPath) return;
+      persistFont(fontPath);
+    });
+
+    removeBtn.addEventListener("click", async () => {
+      await ipcRenderer.invoke(
+        "remove-custom-font",
+        this.settings.custom_theme_custom_font
+      );
+      persistFont("");
+    });
+  }
+
+  // Makes the whole window movable by dragging the sidebar header, restoring
+  // and persisting the position via localStorage.
+  private handleDrag(): void {
+    const wrapper = this.menu;
+    const handle = this.menu.querySelector(".menu-drag") as HTMLElement | null;
+    if (!handle) return;
+
+    const savePos = (): void => {
+      this.localStorage.setItem(
+        "juice-menu-pos",
+        JSON.stringify({
+          left: parseInt(wrapper.style.left, 10) || 0,
+          top: parseInt(wrapper.style.top, 10) || 0,
+        })
+      );
+    };
+
+    try {
+      const saved = JSON.parse(this.localStorage.getItem("juice-menu-pos") || "null");
+      if (saved) {
+        const maxLeft = Math.max(0, window.innerWidth - wrapper.offsetWidth);
+        const maxTop = Math.max(0, window.innerHeight - wrapper.offsetHeight);
+        wrapper.style.transform = "none";
+        wrapper.style.left = Math.max(0, Math.min(maxLeft, saved.left)) + "px";
+        wrapper.style.top = Math.max(0, Math.min(maxTop, saved.top)) + "px";
+      }
+    } catch {}
+
+    handle.addEventListener("mousedown", (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+
+      const rect = wrapper.getBoundingClientRect();
+      wrapper.style.transform = "none";
+      wrapper.style.left = rect.left + "px";
+      wrapper.style.top = rect.top + "px";
+
+      const grabX = e.clientX - rect.left;
+      const grabY = e.clientY - rect.top;
+
+      const onMove = (ev: MouseEvent): void => {
+        wrapper.style.left = ev.clientX - grabX + "px";
+        wrapper.style.top = ev.clientY - grabY + "px";
+      };
+
+      const onUp = (): void => {
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        savePos();
+      };
+
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    });
+  }
+
+  // The menu element is CSS-resizable; this restores the last size and saves
+  // new sizes, ignoring the zero dimensions reported while it is hidden.
+  private handleResize(): void {
+    const menuEl = this.menu.querySelector(".menu") as HTMLElement;
+    if (!menuEl) return;
+
+    try {
+      const saved = JSON.parse(this.localStorage.getItem("juice-menu-size") || "null");
+      if (saved && saved.w && saved.h) {
+        menuEl.style.width = saved.w + "px";
+        menuEl.style.height = saved.h + "px";
+      }
+    } catch {}
+
+    const observer = new ResizeObserver(() => {
+      const w = menuEl.offsetWidth;
+      const h = menuEl.offsetHeight;
+      if (w < 100 || h < 100) return;
+      this.localStorage.setItem("juice-menu-size", JSON.stringify({ w, h }));
+    });
+    observer.observe(menuEl);
   }
 
   private handleKeyEvents(): void {
@@ -188,6 +465,9 @@ class Menu {
       detail: { setting: setting, value: value },
     });
     document.dispatchEvent(event);
+
+    if (setting === "menu_opacity") this.applyMenuOpacity();
+    if (setting.startsWith("custom_theme_")) this.applyCustomTheme();
   }
 
   private handleMenuInputChanges(): void {
@@ -195,7 +475,11 @@ class Menu {
     const textareas = this.menu.querySelectorAll<HTMLTextAreaElement>("textarea[data-setting]");
     for (let i = 0; i < inputs.length; i++) {
       const input = inputs[i];
-      input.addEventListener("change", () => this.handleMenuInputChange(input));
+      // Sliders and color pickers update continuously for live preview; the
+      // rest commit on change to avoid spamming writes while typing.
+      const eventType =
+        input.type === "range" || input.type === "color" ? "input" : "change";
+      input.addEventListener(eventType, () => this.handleMenuInputChange(input));
     }
 
     for (let i = 0; i < textareas.length; i++) {
@@ -217,7 +501,32 @@ class Menu {
     if (setting === "menu_theme") {
       this.setTheme();
     }
+    if (setting.startsWith("custom_theme_")) {
+      this.applyCustomTheme();
+    }
     document.dispatchEvent(event);
+  }
+
+  // Shows a live numeric readout next to any range slider that ships a
+  // sibling `.range-value` element, keeping bare sliders unchanged.
+  private handleRangeValues(): void {
+    const ranges = this.menu.querySelectorAll<HTMLInputElement>(
+      'input[type="range"][data-setting]'
+    );
+    for (let i = 0; i < ranges.length; i++) {
+      const range = ranges[i];
+      const readout = range.parentElement?.querySelector(
+        ".range-value"
+      ) as HTMLElement | null;
+      if (!readout) continue;
+
+      const unit = readout.dataset.unit || "";
+      const render = (): void => {
+        readout.textContent = `${range.value}${unit}`;
+      };
+      render();
+      range.addEventListener("input", render);
+    }
   }
 
   private handleMenuSelectChanges(): void {

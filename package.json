@@ -1,13 +1,13 @@
 {
   "name": "publikc",
-  "version": "1.2.3",
+  "version": "1.2.7",
   "description": "Electron client for Kirka.io",
   "main": "dist/main.js",
   "scripts": {
     "start": "npm run compile && electron .",
     "compile": "tsc && npm run copy-assets",
     "compile:prod": "tsc && npm run copy-assets && node scripts/minify.js",
-    "copy-assets": "copyfiles -u 1 \"src/assets/**/*\" dist/ && copyfiles -u 1 \"src/util/defaults.json\" dist/",
+    "copy-assets": "copyfiles -u 1 \"src/assets/**/*\" dist/ && copyfiles -u 1 \"src/util/defaults.json\" dist/ && copyfiles -u 1 \"scripts/csl4.js\" \"scripts/globalChatStats.js\" \"scripts/Playercount.js\" dist/scripts/",
     "build": "npm run compile:prod && electron-builder",
     "dev": "npm run compile && electron ."
   },
@@ -20,6 +20,7 @@
   "license": "ISC",
   "devDependencies": {
     "@types/electron": "^1.4.38",
+    "@types/fluent-ffmpeg": "^2.1.28",
     "@types/node": "^24.6.2",
     "copyfiles": "^2.4.1",
     "electron": "^10.4.7",
@@ -33,6 +34,8 @@
     "electron-localshortcut": "^3.2.1",
     "electron-store": "^8.2.0",
     "electron-updater": "^6.2.1",
+    "ffmpeg-static": "^5.3.0",
+    "fluent-ffmpeg": "^2.1.3",
     "v8-compile-cache": "^2.4.0"
   },
   "optionalDependencies": {

@@ -8,6 +8,8 @@ files:
   - "!src/**/*"
   - "!tsconfig.json"
   - "!*.ts"
+asarUnpack:
+  - "node_modules/ffmpeg-static/**"
 npmRebuild: false
 win:
   target:

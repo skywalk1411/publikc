@@ -7,6 +7,19 @@ export interface Settings {
   in_process_gpu: boolean;
   menu_keybind: string;
   menu_theme: string;
+  menu_opacity: string;
+  custom_theme_bg: string;
+  custom_theme_text: string;
+  custom_theme_accent: string;
+  custom_theme_border: string;
+  custom_theme_danger: string;
+  custom_theme_font: string;
+  custom_theme_custom_font: string;
+  always_show_ingame_menu: boolean;
+  watermark_enabled: boolean;
+  watermark_text: string;
+  watermark_color: string;
+  watermark_size: string;
   css_link: string;
   css_enabled: boolean;
   advanced_css: string;
@@ -19,12 +32,32 @@ export interface Settings {
   hitmarker_link: string;
   killicon_link: string;
   ui_animations: boolean;
+  perm_tablist: boolean;
+  hide_kill_text: boolean;
+  spectate_button: boolean;
+  colored_killfeed: boolean;
+  hide_teamstate_overlay: boolean;
+  chat_height: string;
+  weapon_size: string;
+  weapon_offset_x: string;
+  weapon_offset_y: string;
+  weapon_offset_z: string;
+  weapon_color: boolean;
+  weapon_color_hex: string;
+  weapon_rgb: boolean;
+  weapon_wireframe: boolean;
+  include_arms: boolean;
+  ads_power: number;
   rave_mode: boolean;
   lobby_keybind_reminder: boolean;
   customizations: boolean;
+  clancustomizations: boolean;
+  local_customizations: boolean;
   kd_indicator: boolean;
   custom_list_price: boolean;
   market_names: boolean;
+  show_trade_buttons: boolean;
+  accept_on_click: boolean;
   general_news: boolean;
   promotional_news: boolean;
   event_news: boolean;
@@ -49,7 +82,8 @@ export interface UserCustomization {
     stops: string[];
     shadow?: string;
   };
-  discord?: boolean;
+  animated?: boolean;
+  discord?: string;
   booster?: boolean;
   badges?: string[];
 }
@@ -74,4 +108,14 @@ export interface SettingsChangedEvent extends CustomEvent {
 
 export interface MapImages {
   [key: string]: string;
+}
+
+export interface ClanCustomization {
+  clan: string;
+  gradient?: {
+    rot: string;
+    stops: string[];
+    shadow?: string;
+  };
+  animated?: boolean;
 }

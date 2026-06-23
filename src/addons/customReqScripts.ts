@@ -1,5 +1,6 @@
 // from CarrySheriff!
 
+import { ipcRenderer } from "electron";
 import type { Settings } from '../types';
 
 export function customReqScripts(settings: Settings): void {
@@ -11,6 +12,8 @@ export function customReqScripts(settings: Settings): void {
 
   window.XMLHttpRequest = function () {
     const xhr = new originalXHR();
+    if (!custom_list_price && !market_names) return xhr;
+
     let requestUrl = "";
 
     const originalOpen = xhr.open;
@@ -117,34 +120,31 @@ export function customReqScripts(settings: Settings): void {
       "Referrer-Policy": "strict-origin-when-cross-origin",
     };
 
-    let count = 0;
-    for (let i = 0; i < itemElements.length; i++) {
-      const sellerId = ids[i];
-
+    const fetchSeller = async (index: number): Promise<void> => {
+      const sellerId = ids[index];
       try {
-        await new Promise((resolve) => setTimeout(resolve, 200));
-
-        let fetchreq = await fetch(`https://api.kirka.io/api/user/getProfile`, {
+        const fetchreq = await fetch(`https://api.kirka.io/api/user/getProfile`, {
           headers: fetchHeaders,
           body: `{"id":"${sellerId}"}`,
           method: "POST",
         });
         const fetchreqJson = await fetchreq.json();
         if (fetchreqJson["shortId"]) {
-          count++;
-          if (count >= itemElements.length) {
-            updating = false;
-          }
-          itemElements[i].textContent = itemElements[i].textContent?.split(" - ")[0] || "";
-          itemElements[i].textContent += ` - ${fetchreqJson["name"]}#${fetchreqJson["shortId"]}`;
+          itemElements[index].textContent = itemElements[index].textContent?.split(" - ")[0] || "";
+          itemElements[index].textContent += ` - ${fetchreqJson["name"]}#${fetchreqJson["shortId"]}`;
         }
-      } catch {
-        count++;
-        if (count === itemElements.length) {
-          updating = false;
-        }
+      } catch {}
+    };
+
+    const BATCH_SIZE = 5;
+    for (let i = 0; i < itemElements.length; i += BATCH_SIZE) {
+      const batch: Promise<void>[] = [];
+      for (let j = i; j < Math.min(i + BATCH_SIZE, itemElements.length); j++) {
+        batch.push(fetchSeller(j));
       }
+      await Promise.all(batch);
     }
+    updating = false;
   }
 
   const inputElem = Object.assign(document.createElement("input"), {
@@ -195,5 +195,19 @@ export function customReqScripts(settings: Settings): void {
     }
   });
 
-  observer.observe(document.body, { childList: true, subtree: true });
+  let observerActive = false;
+
+  const updateObserver = (url: string): void => {
+    const isRelevant = url === `${base_url}hub/market` || url === `${base_url}inventory`;
+    if (isRelevant && !observerActive) {
+      observer.observe(document.body, { childList: true, subtree: true });
+      observerActive = true;
+    } else if (!isRelevant && observerActive) {
+      observer.disconnect();
+      observerActive = false;
+    }
+  };
+
+  updateObserver(window.location.href);
+  ipcRenderer.on("url-change", (_: any, url: string) => updateObserver(url));
 }
