@@ -63,11 +63,8 @@ const num = (value: string, fallback: number): number => {
 
 // The WebGL hooks below run on the render hot path (per matrix upload, many
 // times per frame), so they must never touch the DOM or re-scan settings.
-// Instead we keep two cheap flags up to date out-of-band:
-//   `spectating`  — polled on a low-frequency timer
-//   `modsActive`  — recomputed only when a setting actually changes
-// When `modsActive` is false the hook is fully transparent.
-let spectating = false;
+// `modsActive` is recomputed only when a setting actually changes; when it's
+// false the hook is fully transparent.
 let modsActive = false;
 
 const computeModsActive = (s: Settings): boolean =>
@@ -98,20 +95,84 @@ const patchContext = (gl: WebGLRenderingContext, settings: Settings): void => {
   const realBindTexture = gl.bindTexture.bind(gl);
 
   let modifyNextDraw = false;
-  let lastTexture: WebGLTexture | null = null;
+
+  // Kirka draws the first-person viewmodel in a pass of its own, opened with a
+  // depth-only clear so the gun and arms can never be occluded by the world.
+  // That clear is a far more reliable marker of the pass than the shape of the
+  // matrix, so matrices arriving outside one are left alone however much they
+  // look like a viewmodel. The mask stays set for the rest of the pass.
+  let lastClearMask = 0;
+  const realClear = gl.clear.bind(gl);
+
+  (gl as any).clear = (mask: number) => {
+    lastClearMask = mask;
+    return realClear(mask);
+  };
+
+  const inViewmodelPass = (): boolean => lastClearMask === gl.DEPTH_BUFFER_BIT;
+
+  // One object can upload the same matrix to several uniform locations before
+  // it is drawn (the skinning bind matrices alongside the model matrix, say).
+  // Transforming it each time would compound the scale, so matrices already
+  // handled since the last draw are passed through untouched. Held as raw
+  // floats rather than string keys in a Set to keep the hot path free of
+  // allocation.
+  const SEEN_CAPACITY = 8;
+  const seen = new Float32Array(SEEN_CAPACITY * 6);
+  let seenCount = 0;
+
+  // Reports whether this matrix was already transformed for the pending draw,
+  // recording it as a side effect when it wasn't.
+  const seenSinceLastDraw = (m: ArrayLike<number>): boolean => {
+    for (let i = 0; i < seenCount; i++) {
+      const o = i * 6;
+      if (
+        Math.abs(seen[o] - m[0]) < 0.001 &&
+        Math.abs(seen[o + 1] - m[5]) < 0.001 &&
+        Math.abs(seen[o + 2] - m[10]) < 0.001 &&
+        Math.abs(seen[o + 3] - m[12]) < 0.0001 &&
+        Math.abs(seen[o + 4] - m[13]) < 0.0001 &&
+        Math.abs(seen[o + 5] - m[14]) < 0.0001
+      ) {
+        return true;
+      }
+    }
+    if (seenCount < SEEN_CAPACITY) {
+      const o = seenCount * 6;
+      seen[o] = m[0];
+      seen[o + 1] = m[5];
+      seen[o + 2] = m[10];
+      seen[o + 3] = m[12];
+      seen[o + 4] = m[13];
+      seen[o + 5] = m[14];
+      seenCount++;
+    }
+    return false;
+  };
+
+  // Three.js caches the texture bound to each unit and skips redundant binds.
+  // Binding behind its back desyncs that cache and the next draw samples the
+  // wrong texture, so any override we make must be undone before the renderer
+  // regains control -- i.e. immediately after the draw call it was made for.
+  // `undefined` means "nothing to restore"; `null` is a genuine unbound unit.
+  let pendingRestoreTex: WebGLTexture | null | undefined = undefined;
+
+  const restoreTexture = (): void => {
+    if (pendingRestoreTex === undefined) return;
+    if (pendingRestoreTex !== null) realBindTexture(gl.TEXTURE_2D, pendingRestoreTex);
+    pendingRestoreTex = undefined;
+  };
 
   const paint = (r: number, g: number, b: number): void => {
+    if (pendingRestoreTex === undefined) {
+      pendingRestoreTex = gl.getParameter(gl.TEXTURE_BINDING_2D);
+    }
     colorPixel[0] = r;
     colorPixel[1] = g;
     colorPixel[2] = b;
     colorPixel[3] = 255;
     realBindTexture(gl.TEXTURE_2D, colorTexture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, colorPixel);
-  };
-
-  (gl as any).bindTexture = (target: number, texture: WebGLTexture | null) => {
-    if (target === gl.TEXTURE_2D) lastTexture = texture;
-    return realBindTexture(target, texture);
   };
 
   (gl as any).uniformMatrix4fv = (
@@ -121,7 +182,7 @@ const patchContext = (gl: WebGLRenderingContext, settings: Settings): void => {
     srcOffset?: number,
     srcLength?: number
   ): void => {
-    if (modsActive && !spectating && data && (data as ArrayLike<number>).length >= 16) {
+    if (modsActive && data && (data as ArrayLike<number>).length >= 16) {
       const offset = srcOffset ?? 0;
       const slice =
         offset === 0 && (data as ArrayLike<number>).length === 16
@@ -132,21 +193,26 @@ const patchContext = (gl: WebGLRenderingContext, settings: Settings): void => {
 
       const kind = classifyMatrix(slice);
 
-      if (kind === "weapon" || (kind === "arms" && settings.include_arms)) {
+      if (
+        (kind === "weapon" || (kind === "arms" && settings.include_arms)) &&
+        inViewmodelPass() &&
+        !seenSinceLastDraw(slice)
+      ) {
         modifyNextDraw = true;
 
-        if (settings.weapon_color && settings.weapon_rgb && lastTexture !== null) {
+        // Only touch the texture state when we actually recolour. Rebinding
+        // "the same" texture here is not a no-op: it lands on whichever unit
+        // happens to be active, not the one it came from.
+        if (settings.weapon_color && settings.weapon_rgb) {
           const [r, g, b] = hueToRgb((performance.now() / 3000) * 360);
           paint(r, g, b);
-        } else if (settings.weapon_color && lastTexture !== null) {
+        } else if (settings.weapon_color) {
           const hex = (settings.weapon_color_hex || "#ffffff").replace("#", "");
           paint(
             parseInt(hex.substring(0, 2), 16) || 0,
             parseInt(hex.substring(2, 4), 16) || 0,
             parseInt(hex.substring(4, 6), 16) || 0
           );
-        } else if (lastTexture !== null) {
-          realBindTexture(gl.TEXTURE_2D, lastTexture);
         }
 
         if (kind === "weapon") {
@@ -173,13 +239,19 @@ const patchContext = (gl: WebGLRenderingContext, settings: Settings): void => {
   (gl as any).drawArrays = (mode: number, first: number, count: number) => {
     if (settings.weapon_wireframe && modifyNextDraw) mode = asWireframe(mode);
     modifyNextDraw = false;
-    return realDrawArrays(mode, first, count);
+    seenCount = 0;
+    const result = realDrawArrays(mode, first, count);
+    restoreTexture();
+    return result;
   };
 
   (gl as any).drawElements = (mode: number, count: number, type: number, offset: number) => {
     if (settings.weapon_wireframe && modifyNextDraw) mode = asWireframe(mode);
     modifyNextDraw = false;
-    return realDrawElements(mode, count, type, offset);
+    seenCount = 0;
+    const result = realDrawElements(mode, count, type, offset);
+    restoreTexture();
+    return result;
   };
 };
 
@@ -191,11 +263,6 @@ export function installWeaponHook(settings: Settings): void {
   document.addEventListener("juice-settings-changed", () => {
     modsActive = computeModsActive(settings);
   });
-  // The spectate HUD (`.infos .fps`) only appears/disappears when entering or
-  // leaving spectator mode, so polling a few times a second is ample.
-  setInterval(() => {
-    spectating = !!document.querySelector(".infos .fps");
-  }, 250);
 
   const hooked = new WeakSet<object>();
   const realGetContext = HTMLCanvasElement.prototype.getContext;
