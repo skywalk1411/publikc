@@ -280,8 +280,8 @@ Array.isArray = function () {
     var width = image.width, height = image.height, src = image.src;
     // Check if this is a player skin texture (64x64, 64x32, 42x42, 42x32)
     // and NOT a muzzle flash or already-patched texture
-    if ((width === 64 || width === 42) &&
-        (height === 64 || height === 42 || height === 32) &&
+    if ((width === 128 || width === 64 || width === 42) &&
+        (height === 128 || height === 64 || height === 42 || height === 32) &&
         src !== muzzleImg &&
         src !== customSkinLink &&
         !src.includes(muzzleImg2) &&
